@@ -1,0 +1,27 @@
+{
+  "name": "@spawn/sdk",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Spawn first-party save client prototype. Public source; not an npm release.",
+  "license": "MIT",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "test": "node --experimental-strip-types --test tests/*.test.ts",
+    "check": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "5.9.3"
+  }
+}
