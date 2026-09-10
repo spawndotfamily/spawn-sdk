@@ -1,25 +1,53 @@
 {
   "name": "@spawn/sdk",
-  "version": "0.1.0",
+  "version": "0.2.4",
   "private": true,
   "type": "module",
-  "description": "Spawn first-party save client prototype. Public source; not an npm release.",
+  "description": "Creator browser SDK, public-key launch verification for creator-owned servers, and private-preview publishing CLI. Source release; not published on npm.",
   "license": "MIT",
+  "bin": {
+    "spawn-publish": "dist/cli/run.js",
+    "spawn-dev": "dist/dev/run.js"
+  },
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
+    },
+    "./multiplayer": {
+      "types": "./dist/multiplayer.d.ts",
+      "import": "./dist/multiplayer.js"
+    },
+    "./server": {
+      "types": "./dist/server.d.ts",
+      "import": "./dist/server.js"
+    },
+    "./startup": {
+      "types": "./dist/startup.d.ts",
+      "import": "./dist/startup.js"
     }
   },
   "files": [
     "dist",
     "README.md",
-    "LICENSE"
+    "LICENSE",
+    "AGENTS.md",
+    "docs/security.md",
+    "docs/integration.md",
+    "docs/publishing.md",
+    "docs/multiplayer.md",
+    "examples",
+    "CHANGELOG.md",
+    "docs/creator-checklist.md",
+    "docs/startup.md",
+    "docs/testing.md"
   ],
   "scripts": {
     "build": "tsc",
     "test": "node --experimental-strip-types --test tests/*.test.ts",
-    "check": "tsc --noEmit"
+    "check": "tsc --noEmit",
+    "postbuild": "node -e \"for(const p of ['dist/cli/run.js','dist/dev/run.js']) require('node:fs').chmodSync(p, 0o755)\"",
+    "spawn-publish": "node --experimental-strip-types src/cli/run.ts"
   },
   "devDependencies": {
     "typescript": "5.9.3"
