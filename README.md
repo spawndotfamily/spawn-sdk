@@ -64,6 +64,6 @@ The CLI provides `listing get/update` and `image add/replace/remove` using a dow
 
 ## Local testing and GitHub
 
-Run `./node_modules/.bin/spawn-publish check ./dist`, then `./node_modules/.bin/spawn-dev ./dist` to test the unchanged game SDK with fake local accounts and a mandatory TEST confirmation overlay. No credentials are needed. Follow [the testing guide](docs/testing.md), then test a private Spawn preview before approval.
+Run `./node_modules/.bin/spawn-publish check ./dist`, then `./node_modules/.bin/spawn-dev ./dist` to test the unchanged game SDK with fake local accounts and a mandatory TEST confirmation overlay. The local creator panel also supports pool top-ups, withdrawals and manual rewards to fake players, with transfer receipts and unverified scores. No credentials are needed. These controls never grant the game creator authority. Follow [the testing guide](docs/testing.md), then test a private Spawn preview before approval.
 
 The website's GitHub importer accepts a prebuilt repository folder or an Actions artifact named `spawn-browser-build`. Private repositories require a configured GitHub App and creator authorization. Build scripts run on the creator's computer or their GitHub Actions runner, never on Spawn's accounts server. See [publishing](docs/publishing.md#github-builds).

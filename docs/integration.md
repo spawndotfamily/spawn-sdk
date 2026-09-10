@@ -51,3 +51,6 @@ For any paid leaderboard or reward participation, the platform must verify the r
 A timeout can occur after payment was recorded. Use Spawn's supported receipt/history recovery flow when available to reconcile the original request; never blindly send another charge. The player and creator receipt views belong to the platform, not custom game-side payment history. TEST receipts remain non-redeemable and must not authorize real-money entries.
 
 Use [local testing](testing.md) for fake accounts and the same isolated SDK handshake before uploading. The default client accepts only the launcher’s public origin configuration; it does not accept a player identity or payment permission from that configuration.
+
+
+Local integration tests can exercise the complete fake entry → pool → manual reward loop in the launcher-owned creator panel. Follow [local testing](testing.md). Keep the browser client unchanged when moving to a private Spawn preview, and never fall back to local identity on connection failure. This is simulation coverage, not live-token or multiplayer-server validation.

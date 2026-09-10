@@ -1,6 +1,6 @@
 {
   "name": "@spawn/sdk",
-  "version": "0.2.4",
+  "version": "0.2.5",
   "private": true,
   "type": "module",
   "description": "Creator browser SDK, public-key launch verification for creator-owned servers, and private-preview publishing CLI. Source release; not published on npm.",

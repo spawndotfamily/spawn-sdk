@@ -5,7 +5,8 @@ import { randomBytes } from 'node:crypto';
 // @ts-ignore Node built-ins are provided by the CLI runtime.
 import { readFile } from 'node:fs/promises';
 import { buildBrowserBundle } from '../cli/index.ts';
-import { launcherHtml, launcherCss } from './shell.ts';
+import { launcherHtml } from './shell.ts';
+import { launcherCss } from './styles.ts';
 const MIME: Record<string, string> = { html: 'text/html; charset=utf-8', js: 'text/javascript', mjs: 'text/javascript', css: 'text/css', json: 'application/json', wasm: 'application/wasm', svg: 'image/svg+xml', png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', webp: 'image/webp', gif: 'image/gif', ico: 'image/x-icon', avif: 'image/avif', mp3: 'audio/mpeg', ogg: 'audio/ogg', wav: 'audio/wav', mp4: 'video/mp4', webm: 'video/webm', woff: 'font/woff', woff2: 'font/woff2', ttf: 'font/ttf', otf: 'font/otf' };
 type Request = { method: string; url: string; headers: { host?: string } };
 type Response = { setHeader(name: string, value: string): void; writeHead(status: number): Response; end(body?: string | Uint8Array): void };
@@ -15,8 +16,10 @@ export async function startLocalLauncher(directory: string, port = 4174) {
   const token: string = randomBytes(32).toString('base64url');
   const runtime = globalThis as unknown as { Buffer: { from(value: string, encoding?: string): Uint8Array & { toString(encoding?: string): string } } };
   const files = new Map(bundle.files.map(file => [file.path, runtime.Buffer.from(file.data, 'base64')]));
-  const host = await readFile(new URL('./host.js', import.meta.url), 'utf8') as string;
-  const state = await readFile(new URL('./state.js', import.meta.url), 'utf8') as string;
+  const modules = new Map<string, string>();
+  for (const name of ['host', 'state', 'economy', 'panel']) {
+    modules.set('/__spawn/' + name + '.js', await readFile(new URL('./' + name + '.js', import.meta.url), 'utf8') as string);
+  }
   let origin = '';
   const server = createServer({ maxHeaderSize: 8192 }, (request: Request, response: Response) => {
     response.setHeader('Cache-Control', 'no-store'); response.setHeader('X-Content-Type-Options', 'nosniff'); response.setHeader('Referrer-Policy', 'no-referrer');
@@ -24,8 +27,7 @@ export async function startLocalLauncher(directory: string, port = 4174) {
     const path = request.url.split('?')[0];
     let body: string | Uint8Array | undefined, type = 'text/html; charset=utf-8';
     if (path === '/') body = launcherHtml(token);
-    else if (path === '/__spawn/host.js') { body = host; type = 'text/javascript'; }
-    else if (path === '/__spawn/state.js') { body = state; type = 'text/javascript'; }
+    else if (modules.has(path)) { body = modules.get(path); type = 'text/javascript'; }
     else if (path === '/__spawn/style.css') { body = launcherCss; type = 'text/css'; }
     else if (path.startsWith('/build/' + token + '/')) {
       let name = ''; try { name = decodeURIComponent(path.slice(token.length + 8)); } catch { /* Invalid path stays unavailable. */ }

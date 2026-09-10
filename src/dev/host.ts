@@ -1,4 +1,5 @@
 import { LocalTestState, type LocalQuote } from './state.ts';
+import { createCreatorPanel } from './panel.ts';
 const element = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 const player = { value: 'alice' };
 const playerButtons = Array.from(document.querySelectorAll<HTMLButtonElement>('[data-player]'));
@@ -7,13 +8,8 @@ const dialog = element<HTMLDialogElement>('payment');
 const confirm = element<HTMLButtonElement>('confirm'), cancel = element<HTMLButtonElement>('cancel'), next = element<HTMLButtonElement>('continue');
 let state = new LocalTestState(), dispose: (() => void) | undefined;
 let payment: { quote: LocalQuote; resolve: (value: unknown) => void; reject: (error: Error) => void } | null = null;
-function refresh() {
-  element('balance').textContent = `${state.balance(player.value)} local TEST available`;
-  const history = element('history'); history.replaceChildren();
-  for (const item of state.history.filter(item => item.player === player.value)) {
-    const row = document.createElement('li'); row.textContent = `Paid 10 TEST · ${item.receipt.id}`; history.append(row);
-  }
-}
+const panel = createCreatorPanel(() => state, () => player.value);
+function refresh() { panel.refresh(); }
 function closePayment() {
   if (payment) { state.cancel(payment.quote.id); payment.reject(new Error('Local payment cancelled.')); }
   payment = null; dialog.close();
@@ -77,7 +73,7 @@ function openGame() {
       if (data.method === 'identity') { value = state.identity(identity); status.textContent = `Connected as ${state.identity(identity).displayName}`; }
       else if (data.method === 'load') value = state.load(identity, String(payload.key));
       else if (data.method === 'save') value = state.save(identity, String(payload.key), payload.value, payload.expectedVersion as number);
-      else if (data.method === 'submitScore') value = state.score(identity, payload.score as number, payload.details);
+      else if (data.method === 'submitScore') { value = state.score(identity, payload.score as number, payload.details); refresh(); }
       else if (data.method === 'requestPayment') value = await requestPayment(launch, String(payload.productId));
       else throw new Error('Unsupported Spawn operation.');
       send(true, value);
@@ -105,7 +101,7 @@ function openGame() {
 }
 element('reopen').onclick = openGame;
 element('disconnect').onclick = () => dispose?.();
-element('reset').onclick = () => { dispose?.(); state = new LocalTestState(); openGame(); };
+element('reset').onclick = () => { dispose?.(); state = new LocalTestState(); panel.reset(); openGame(); };
 for (const button of playerButtons) button.onclick = () => { player.value = button.dataset.player!; for (const item of playerButtons) item.setAttribute('aria-pressed', String(item === button)); openGame(); };
 window.addEventListener('pagehide', () => dispose?.());
 openGame();

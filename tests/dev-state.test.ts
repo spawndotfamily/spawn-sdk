@@ -26,7 +26,7 @@ test('a quote does not debit; cancellation spends nothing; confirmation is exact
   assert.equal(state.balance('bob'), 100);
   assert.throws(() => state.quote('empty', 'launch2', 'entry'), /balance/);
   assert.throws(() => state.quote('alice', 'launch2', 'arbitrary'), /entry/);
-  assert.equal(state.history.length, 1);
+  assert.equal(state.economy.history.length, 1);
 });
 test('scores never pay rewards and local records have explicit non-production IDs', () => {
   const state = new LocalTestState();

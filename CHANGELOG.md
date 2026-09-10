@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.5 — 2026-09-11
+
+- Add a launcher-owned fake creator wallet and game pool. Confirmed entry payments fund the pool exactly once; local operator controls fund, withdraw and reward test players.
+- Show local transfer receipts and unverified score submissions. Keep all fake balances in memory and all creator controls outside the game bridge.
+- Document identical local/hosted client setup, no automatic fallback and private-preview validation. Hosted accounts remain TEST-only.
+
+
 ## 0.2.4 — unreleased candidate
 
 - Add a loopback-only local launcher with isolated fake accounts, saves, unverified scores and explicit TEST payment consent.
