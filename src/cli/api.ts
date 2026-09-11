@@ -4,6 +4,8 @@ export type PublishConfig = {
   apiUrl: string;
   projectId: string;
   publishKey: string;
+  /** Optional explicit artifact-worker origin; otherwise the SDK derives it. */
+  uploadOrigin?: string;
   scopes?: readonly string[];
 };
 
@@ -79,13 +81,22 @@ export function validatePublishConfig(config: PublishConfig): PublishConfig {
     throw new PublishCliError('SPAWN_API_URL must be an absolute HTTP or HTTPS origin.');
   }
   const apiUrl = normalizeApiUrl(config.apiUrl.trim());
+  const uploadOrigin = config.uploadOrigin === undefined
+    ? undefined
+    : normalizeApiUrl(typeof config.uploadOrigin === 'string' ? config.uploadOrigin.trim() : '');
   const projectId = typeof config.projectId === 'string' ? config.projectId.trim() : '';
   const publishKey = typeof config.publishKey === 'string' ? config.publishKey.trim() : '';
   if (!PROJECT_ID_PATTERN.test(projectId)) {
     throw new PublishCliError('SPAWN_PROJECT_ID must be a UUID.');
   }
   if (!publishKey) throw new PublishCliError('SPAWN_PUBLISH_KEY is required.');
-  return { apiUrl, projectId, publishKey, ...(config.scopes ? { scopes: [...config.scopes] } : {}) };
+  return {
+    apiUrl,
+    projectId,
+    publishKey,
+    ...(uploadOrigin ? { uploadOrigin } : {}),
+    ...(config.scopes ? { scopes: [...config.scopes] } : {}),
+  };
 }
 
 async function responseBody(response: Response): Promise<unknown> {
@@ -183,4 +194,3 @@ export async function requestJson(
   if (!isRecord(body)) throw new PublishCliError('Spawn publish returned an invalid release response.');
   return body;
 }
-

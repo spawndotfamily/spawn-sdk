@@ -5,6 +5,7 @@ export { PublishCliError, PUBLISH_REQUEST_TIMEOUT_MS } from './api.ts';
 export type { PublishConfig } from './api.ts';
 import { parseListingCommand, runListingCommand, LISTING_USAGE } from './listing.ts';
 import type { ListingCommand } from './listing.ts';
+import { inspectBrowserBuild, publishBrowserDirectory } from './upload-client.ts';
 // @ts-ignore Node's runtime modules are available to the CLI without adding a runtime dependency.
 import { lstat, opendir, realpath } from 'node:fs/promises';
 // @ts-ignore Node's runtime modules are available to the CLI without adding a runtime dependency.
@@ -331,11 +332,13 @@ export function readConfig(env: Record<string, string | undefined> = runtimeProc
     throw new PublishCliError('SPAWN_PROJECT_ID must be a UUID.');
   }
   const publishKey = requiredEnv(env, 'SPAWN_PUBLISH_KEY');
-  return validatePublishConfig({ apiUrl, projectId, publishKey });
+  const uploadOrigin = env.SPAWN_UPLOAD_ORIGIN?.trim();
+  return validatePublishConfig({ apiUrl, projectId, publishKey, ...(uploadOrigin ? { uploadOrigin } : {}) });
 }
 
 export type PublishCredentials = {
   platformOrigin: string;
+  uploadOrigin?: string;
   projectId: string;
   publishKey: string;
   expiresAt: string | number;
@@ -362,7 +365,7 @@ export async function readCredentialsFile(credentialsPath: string, now = Date.no
   }
   if (!isRecord(parsed)) throw new PublishCliError('The credentials file must contain one JSON object.');
   const required = ['platformOrigin', 'projectId', 'publishKey', 'expiresAt'];
-  const allowed = new Set([...required, 'scopes']);
+  const allowed = new Set([...required, 'uploadOrigin', 'scopes']);
   const keys = Object.keys(parsed);
   if (keys.some((key) => !allowed.has(key))) {
     throw new PublishCliError('The credentials file contains unknown fields.');
@@ -372,13 +375,16 @@ export async function readCredentialsFile(credentialsPath: string, now = Date.no
   }
   if (
     typeof parsed.platformOrigin !== 'string' ||
+    (parsed.uploadOrigin !== undefined && typeof parsed.uploadOrigin !== 'string') ||
     typeof parsed.projectId !== 'string' ||
     typeof parsed.publishKey !== 'string' ||
     (typeof parsed.expiresAt !== 'string' && typeof parsed.expiresAt !== 'number')
   ) {
     throw new PublishCliError('The credentials file has invalid fields.');
   }
-  const expiresAt = typeof parsed.expiresAt === 'number' ? parsed.expiresAt : Date.parse(parsed.expiresAt);
+  const expiresAt = typeof parsed.expiresAt === 'number'
+    ? (Number.isSafeInteger(parsed.expiresAt) ? parsed.expiresAt : NaN)
+    : Date.parse(parsed.expiresAt);
   if (!Number.isFinite(expiresAt)) throw new PublishCliError('The credentials file has an invalid expiry.');
   if (expiresAt <= now) throw new PublishCliError('The credentials file has expired.');
 
@@ -388,6 +394,7 @@ export async function readCredentialsFile(credentialsPath: string, now = Date.no
   const config = {
     ...(parsed.scopes === undefined ? {} : { scopes: parsed.scopes as string[] }),
     apiUrl: normalizeApiUrl(parsed.platformOrigin.trim()),
+    ...(parsed.uploadOrigin === undefined ? {} : { uploadOrigin: normalizeApiUrl(parsed.uploadOrigin.trim()) }),
     projectId: parsed.projectId.trim(),
     publishKey: parsed.publishKey.trim(),
   };
@@ -523,6 +530,23 @@ function displayPreviewUrl(value: unknown, baseUrl?: string): unknown {
   }
 }
 
+function isExactLoopbackOrigin(value: string): boolean {
+  try {
+    const url = new URL(value);
+    return url.protocol === 'http:' &&
+      (url.hostname === 'localhost' || url.hostname === '127.0.0.1' || url.hostname === '[::1]');
+  } catch {
+    return false;
+  }
+}
+
+function useExplicitLocalLegacyPublisher(config: PublishConfig): boolean {
+  // The old 25 MB simulator is retained only for local reference installations.
+  // Every remote origin, and every local origin with an explicit worker, uses the
+  // negotiated streaming protocol and never falls back after a request fails.
+  return isExactLoopbackOrigin(config.apiUrl) && config.uploadOrigin === undefined;
+}
+
 export function formatReleaseSummary(response: unknown, secret?: string, baseUrl?: string): string {
   const value = isRecord(response) ? response : {};
   const summary = {
@@ -554,9 +578,8 @@ export async function main(
     }
 
     if (command.kind === 'check') {
-      const bundle = await buildBrowserBundle(command.directory);
-      const bytes = bundle.files.reduce((sum, file) => sum + file.data.length / 4 * 3 - (file.data.endsWith('==') ? 2 : file.data.endsWith('=') ? 1 : 0), 0);
-      output.log(JSON.stringify({ format: 'spawn-browser-v1', entry: bundle.entry, files: bundle.files.length, bytes, playableVerified: false, next: 'Run spawn-dev on this directory, then upload a private preview with spawn-publish publish.' }));
+      const bundle = await inspectBrowserBuild(command.directory);
+      output.log(JSON.stringify({ format: 'spawn-browser-v1', entry: bundle.entry, files: bundle.files.length, bytes: bundle.bytes, playableVerified: false, next: 'Run spawn-dev on this directory, then upload a private preview with spawn-publish publish.' }));
       return 0;
     }
     const config = command.credentialsPath
@@ -575,10 +598,14 @@ export async function main(
       return 0;
     }
 
-    const payload = await buildBrowserBundle(command.directory);
     const sourceCommit = command.sourceCommit ?? env.SPAWN_SOURCE_COMMIT?.trim();
-    if (sourceCommit) payload.sourceCommit = validateSourceCommit(sourceCommit);
-    const response = await uploadRelease(config, payload, fetchImplementation);
+    const response = useExplicitLocalLegacyPublisher(config)
+      ? await uploadRelease(
+        config,
+        Object.assign(await buildBrowserBundle(command.directory), sourceCommit ? { sourceCommit: validateSourceCommit(sourceCommit) } : {}),
+        fetchImplementation,
+      )
+      : await publishBrowserDirectory(config, command.directory, sourceCommit, fetchImplementation);
     output.log(formatReleaseSummary(response, publishKey, config.apiUrl));
     return 0;
   } catch (error) {

@@ -2,7 +2,7 @@
 
 Integrate a browser game with Spawn without access to Spawn's private infrastructure. Creators operate their own multiplayer servers. Spawn provides an optional small, player-and-game-scoped save store; it does not provision creator servers or give creators access to its database engine, VPS or administrator services.
 
-This is source candidate **0.2.4**, not an npm-published release. Build or install the supplied source package locally; bundle browser dependencies with your game. No UI framework or runtime SDK dependency is required.
+This is source candidate **0.2.6**, not an npm-published release. Build or install the supplied source package locally; bundle browser dependencies with your game. No UI framework or runtime SDK dependency is required.
 
 ## Choose an integration
 
@@ -44,7 +44,7 @@ npm run spawn-publish -- publish ./game-build --credentials ~/Downloads/spawn-pr
 npm run spawn-publish -- status <release-id> --credentials ~/Downloads/spawn-project-<projectId>.json
 ```
 
-The downloaded credential is for your local publishing CLI only. Keep it outside the game build, source, logs and prompts. Publishing uploads a private preview; the creator approves that exact artifact in Spawn, and listing remains platform-controlled. See [publishing instructions](docs/publishing.md) for limits and options.
+The downloaded credential is for your local publishing CLI only. Keep it outside the game build, source, logs and prompts. Remote publishing streams a manifest and bounded 8 MiB chunks through Spawn’s isolated upload worker; local reference installations without a worker retain the bounded legacy path. The creator approves that exact artifact in Spawn, and listing remains platform-controlled. See [publishing instructions](docs/publishing.md) for limits and options.
 
 Read [security boundaries](docs/security.md) and [integration details](docs/integration.md) before shipping. `createSpawnClient('rob-the-rich')` remains a **deprecated, reviewed first-party compatibility API**; creators should use the isolated client above. Its same-origin cookie allowlist is deliberately unchanged.
 

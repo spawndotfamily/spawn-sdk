@@ -44,7 +44,7 @@ The fixtures are bounded and held only in this page's memory. **Reset testing** 
 
 ## Finish in a private Spawn preview
 
-`check` validates file format and size; it cannot prove the game is playable. Test the real isolated preview after upload, including sign-in, account labels, save limits, optional payment consent, cancellation and reopening. Local success is not certification of payment eligibility, fair play or security. Keep automatic rewards from browser-reported outcomes off.
+`check` streams file hashes and validates the 8 GB client safety ceiling, 1,000 file and 1 MB entry limits without credentials; the platform still applies its default 1 GB admission or a documented owner allowance. It cannot prove the game is playable. Test the real isolated preview after upload, including sign-in, account labels, save limits, optional payment consent, cancellation and reopening. Local success is not certification of payment eligibility, fair play or security. Keep automatic rewards from browser-reported outcomes off.
 
 
 ## Test the creator pool

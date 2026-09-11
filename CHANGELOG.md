@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.2.6 — 2026-09-11
+
+- Verify each upload chunk against the inspected build before transmission; stop if local files change during publishing.
+
+- Stream browser build manifests and 8 MiB file chunks through the separate artifact worker, with incremental SHA-256 hashing and bounded retries.
+- Set an 8,000,000,000-byte client safety ceiling for remote streaming; the platform defaults admission to 1,000,000,000 bytes and may grant an owner-controlled allowance up to that ceiling. Preserve the local 25 MB helper only for legacy loopback reference tests.
+- Require the worker origin returned by core to match the derived or explicitly configured origin; complete releases with the platform publish credential only.
+
 ## 0.2.5 — 2026-09-11
 
 - Add a launcher-owned fake creator wallet and game pool. Confirmed entry payments fund the pool exactly once; local operator controls fund, withdraw and reward test players.
