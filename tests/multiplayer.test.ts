@@ -96,3 +96,18 @@ test('connection presentation uses only confirmed port and exact bounded state',
   assert.equal(client.reportConnection('disconnected'),true);client.dispose();assert.equal(client.reportConnection('ready'),false);
  }finally{client.dispose();f.restore();}
 });
+
+test('resource refresh arrives on the established grant request without replacing the client', async () => {
+ const f=fixture(), p=port(), paths:string[]=[];
+ const client=createSpawnMultiplayerClient({platformOrigin,serverOrigin,onResourcePath:path=>paths.push(path)});
+ try {
+  const nonce=connect(f,p);p.emit({type:'spawn:multiplayer-confirm',version:1,nonce});await client.ready();
+  for(const path of ['/preview/first/','/preview/renewed/']){
+   const request=client.requestGrant();await Promise.resolve();const requestId=p.sent.at(-1).requestId;
+   p.emit({type:'spawn:multiplayer-resource',version:1,nonce,requestId,path});
+   p.emit({type:'spawn:multiplayer-grant',version:1,nonce,requestId,ticket:'fixture.proof',serverOrigin});
+   assert.deepEqual(await request,{ticket:'fixture.proof'});
+  }
+  assert.deepEqual(paths,['/preview/first/','/preview/renewed/']);assert.equal(f.sent.length,1);
+ }finally{client.dispose();f.restore();}
+});

@@ -83,3 +83,7 @@ The browser client allows a bounded 45-second initial document-load phase before
 ## Account-required game startup
 
 Follow [the startup integration](startup.md) before enabling any play mode. Use the shared `@spawn/sdk/startup` controller, wait for trusted identity (and verified server admission for multiplayer), gate practice/bots too, and pause on connection loss. A handshake or grant alone is not multiplayer readiness. No automatic anonymous fallback. Keep an explicit isolated development launcher separate.
+
+### Long-running game windows
+
+An open game is not a timed demo. Keep the same document and match while renewing admission through `requestGrant()`. If the platform provides protected resource mounts, `onResourcePath(path)` receives a refreshed relative path on the authenticated document channel, during a pending grant request. Apply it only to the configured game-server origin; it is routing access, not identity or payment proof. Obtain a fresh grant before reconnecting, even when resuming the same match. Never reload the iframe on resource expiry. Account revocation and server admission checks still apply.

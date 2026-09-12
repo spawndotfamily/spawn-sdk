@@ -2,6 +2,8 @@
 export type SpawnMultiplayerOptions = {
     platformOrigin: string;
     serverOrigin: string;
+    /** Trusted same-server resource routing refresh; never player or payment proof. */
+    onResourcePath?: (path: string) => void;
 };
 export type SpawnMultiplayerClient = {
     ready(): Promise<void>;
@@ -114,6 +116,11 @@ export function createSpawnMultiplayerClient(options: SpawnMultiplayerOptions): 
         }
         if (!pending || value.requestId !== pending.id)
             return;
+        if (value.type === PREFIX + 'resource' && exact(value, ['type', 'version', 'nonce', 'requestId', 'path'])) {
+            if (typeof value.path === 'string' && value.path.length <= 1024 && /^\/(?:[A-Za-z0-9_~-][A-Za-z0-9._~-]*\/)*$/.test(value.path))
+                options.onResourcePath?.(value.path);
+            return;
+        }
         const good = value.type === PREFIX + 'grant' && exact(value, ['type', 'version', 'nonce', 'requestId', 'ticket', 'serverOrigin']);
         const failed = value.type === PREFIX + 'grant-error' && exact(value, ['type', 'version', 'nonce', 'requestId', 'message']);
         if (!good && !failed)

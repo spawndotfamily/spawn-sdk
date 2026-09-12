@@ -48,3 +48,5 @@
 - Marked the old first-party same-origin save client deprecated without broadening its cookie access or removing compatibility.
 - No private platform credentials, VPS administration, hosted creator servers, live payments, trusted browser scores or automatic bans are exposed.
 - Multiplayer activation requires the matching Spawn parent protocol and explicit game/server enablement; self-service server registration is not implemented.
+
+- Multiplayer: optional document-bound resource-path refresh for uninterrupted long-running game sessions and reconnects.
