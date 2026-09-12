@@ -1,12 +1,12 @@
 # Account-required startup
 
-Use `@spawn/sdk/startup` to keep gameplay blocked until account connection succeeds. It has no DOM, networking, engine, framework or private infrastructure dependency. It coordinates one bounded connection attempt, coalesces Retry, clears stale identity on disconnect and rejects late results after cancellation. Default timeout is 60 seconds; maximum is 120 seconds.
+Use `@spawndotfamily/sdk/startup` to keep gameplay blocked until account connection succeeds. It has no DOM, networking, engine, framework or private infrastructure dependency. It coordinates one bounded connection attempt, coalesces Retry, clears stale identity on disconnect and rejects late results after cancellation. Default timeout is 60 seconds; maximum is 120 seconds.
 
 ## Browser previews
 
 ```js
-import { createSpawnGameClient } from '@spawn/sdk';
-import { createSpawnStartup } from '@spawn/sdk/startup';
+import { createSpawnGameClient } from '@spawndotfamily/sdk';
+import { createSpawnStartup } from '@spawndotfamily/sdk/startup';
 
 const client = createSpawnGameClient({ platformOrigin: 'https://platform.example' });
 const startup = createSpawnStartup({ connect: () => client.identity() });

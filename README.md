@@ -2,15 +2,15 @@
 
 Integrate a browser game with Spawn without access to Spawn's private infrastructure. Creators operate their own multiplayer servers. Spawn provides an optional small, player-and-game-scoped save store; it does not provision creator servers or give creators access to its database engine, VPS or administrator services.
 
-This is source candidate **0.2.6**, not an npm-published release. Build or install the supplied source package locally; bundle browser dependencies with your game. No UI framework or runtime SDK dependency is required.
+Install the published package using `npm install --save-exact @spawndotfamily/sdk@0.2.7 --ignore-scripts`. Read `node_modules/@spawndotfamily/sdk/AGENTS.md` and `node_modules/@spawndotfamily/sdk/docs/creator-checklist.md` before integrating. Bundle browser dependencies with your game; no UI framework or runtime SDK dependency is required. The public GitHub repository remains available for source inspection.
 
 ## Choose an integration
 
 | Entry point | Purpose | Availability |
 | --- | --- | --- |
-| `@spawn/sdk` → `createSpawnGameClient` | Isolated uploaded preview: public player label, own saves, unverified submissions and fixed TEST entry receipts | Implemented preview contract; requires a Spawn-launched `/build/...` document |
-| `@spawn/sdk/multiplayer` → `createSpawnMultiplayerClient` | Request short-lived signed launch proof for your own game server | Requires Spawn to enable the game/server and the generic multiplayer parent protocol; SDK alone does not enable registration |
-| `@spawn/sdk/server` → `createSpawnLaunchVerifier` | Verify that proof on your Node server using pinned **public** keys | Local helper, no network calls, hosting, account administration or access to Spawn storage |
+| `@spawndotfamily/sdk` → `createSpawnGameClient` | Isolated uploaded preview: public player label, own saves, unverified submissions and fixed TEST entry receipts | Implemented preview contract; requires a Spawn-launched `/build/...` document |
+| `@spawndotfamily/sdk/multiplayer` → `createSpawnMultiplayerClient` | Request short-lived signed launch proof for your own game server | Requires Spawn to enable the game/server and the generic multiplayer parent protocol; SDK alone does not enable registration |
+| `@spawndotfamily/sdk/server` → `createSpawnLaunchVerifier` | Verify that proof on your Node server using pinned **public** keys | Local helper, no network calls, hosting, account administration or access to Spawn storage |
 | `spawn-publish` | Upload a prebuilt browser directory and check its private preview | Scoped, expiring publishing credential; listing details/images require explicit listing:write and platform availability; never publication approval |
 
 Multiplayer self-service server registration is not available. The generic parent protocol is a coordinated platform activation dependency. Existing reviewed games may use the legacy protocol until migration; new SDK game builds must wait for generic-protocol activation. The SDK must not be used to guess undocumented endpoints. A creator needs no Spawn VPS address, login, internal URL or private signing key.
@@ -18,7 +18,7 @@ Multiplayer self-service server registration is not available. The generic paren
 ## Optional saves in an uploaded preview
 
 ```js
-import {createSpawnGameClient} from '@spawn/sdk';
+import {createSpawnGameClient} from '@spawndotfamily/sdk';
 const spawn=createSpawnGameClient();
 const prior=await spawn.load('progress');
 await spawn.save('progress',{level:3},prior?.version??0);
@@ -37,11 +37,11 @@ Use the browser module to request launch proof and the separate server module to
 
 ## Build and publish a private preview
 
-Requires Node 22.13+ and npm. Run `npm ci`, `npm test`, `npm run check`, and `npm run build`. Build output includes JavaScript and TypeScript declarations; plain JavaScript games can copy the required compiled browser module locally. The SDK is not a CDN dependency and `@spawn/sdk/server` must never be bundled into browser assets.
+Requires Node 22.13+ and npm. The npm package includes compiled JavaScript, TypeScript declarations, and both command-line tools. SDK contributors use `npm ci`, `npm test`, `npm run check`, and `npm run build` in the source checkout. The SDK is not a CDN dependency and `@spawndotfamily/sdk/server` must never be bundled into browser assets.
 
 ```sh
-npm run spawn-publish -- publish ./game-build --credentials ~/Downloads/spawn-project-<projectId>.json
-npm run spawn-publish -- status <release-id> --credentials ~/Downloads/spawn-project-<projectId>.json
+npx --no-install spawn-publish publish ./game-build --credentials ~/Downloads/spawn-project-<projectId>.json
+npx --no-install spawn-publish status <release-id> --credentials ~/Downloads/spawn-project-<projectId>.json
 ```
 
 The downloaded credential is for your local publishing CLI only. Keep it outside the game build, source, logs and prompts. Remote publishing streams a manifest and bounded 8 MiB chunks through Spawn’s isolated upload worker; local reference installations without a worker retain the bounded legacy path. The creator approves that exact artifact in Spawn, and listing remains platform-controlled. See [publishing instructions](docs/publishing.md) for limits and options.
@@ -52,11 +52,11 @@ Source is MIT licensed. Spawn branding and third-party game assets are not inclu
 
 ## Creator integration workflow
 
-Agents integrating an existing game must follow [the complete creator checklist](docs/creator-checklist.md), starting from the private creator credentials and the public SDK source workflow. Keep ordinary launches free; optional fixed TEST interactions require a separate deliberate player action and Spawn confirmation. Multiplayer launch readiness allows up to 45 seconds for initial document loading, then 8 seconds for channel confirmation. Grant requests keep their 8-second deadline. Navigation still permanently closes that document.
+Agents integrating an existing game must follow [the complete creator checklist](docs/creator-checklist.md), starting from the private creator credentials and the installed SDK workflow. Keep ordinary launches free; optional fixed TEST interactions require a separate deliberate player action and Spawn confirmation. Multiplayer launch readiness allows up to 45 seconds for initial document loading, then 8 seconds for channel confirmation. Grant requests keep their 8-second deadline. Navigation still permanently closes that document.
 
 ## Account-required game startup
 
-Follow [the startup integration](docs/startup.md) before enabling any play mode. Use the shared `@spawn/sdk/startup` controller, wait for trusted identity (and verified server admission for multiplayer), gate practice/bots too, and pause on connection loss. A handshake or grant alone is not multiplayer readiness. No automatic anonymous fallback. Keep an explicit isolated development launcher separate.
+Follow [the startup integration](docs/startup.md) before enabling any play mode. Use the shared `@spawndotfamily/sdk/startup` controller, wait for trusted identity (and verified server admission for multiplayer), gate practice/bots too, and pause on connection loss. A handshake or grant alone is not multiplayer readiness. No automatic anonymous fallback. Keep an explicit isolated development launcher separate.
 
 ## Game details and images
 
@@ -71,3 +71,7 @@ The website's GitHub importer accepts a prebuilt repository folder or an Actions
 Multiplayer integrations can refresh protected game-server resource paths through the established admission channel without reloading the game. See [long-running game windows](docs/multiplayer.md#long-running-game-windows).
 
 Local creator testing includes the configurable incoming platform fee and a separate fake Spawn fee balance. See [fee integration](docs/integration.md#platform-fees-and-creator-rewards). Hosted multiplayer settlement is a separate integration and remains unavailable until enabled.
+
+## Migrating existing source integrations
+
+The public npm name is `@spawndotfamily/sdk` because the `@spawn` namespace is unavailable. Update imports from `@spawn/sdk` to `@spawndotfamily/sdk`, including subpaths. Alternatively, preserve existing imports with `npm install --save-exact @spawn/sdk@npm:@spawndotfamily/sdk@0.2.7 --ignore-scripts`. Both names expose the same SDK APIs and CLI commands; choose one installation approach.

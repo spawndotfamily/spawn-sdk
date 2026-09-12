@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.7
+
+- Prepare the first public npm package as `@spawndotfamily/sdk`; the `@spawn` npm namespace is unavailable. Existing source integrations may migrate their imports or use an npm alias.
+- Include compiled modules, the publishing/local-testing CLIs, and agent integration instructions in the package. Creators can install a pinned version without a separate SDK checkout or build.
+- npm installation does not change the upload API, its authentication, or fix network/TLS failures reaching Spawn.
+
+
 ## Unreleased
 
 - Make public GitHub source the default creator installation path; keep direct private-preview upload independent of GitHub connection.

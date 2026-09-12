@@ -32,7 +32,7 @@ Uploaded games run without `allow-same-origin`, so they do not receive the accou
 
 ## Account-required game startup
 
-Follow [the startup integration](startup.md) before enabling any play mode. Use the shared `@spawn/sdk/startup` controller, wait for trusted identity (and verified server admission for multiplayer), gate practice/bots too, and pause on connection loss. A handshake or grant alone is not multiplayer readiness. No automatic anonymous fallback. Keep an explicit isolated development launcher separate.
+Follow [the startup integration](startup.md) before enabling any play mode. Use the shared `@spawndotfamily/sdk/startup` controller, wait for trusted identity (and verified server admission for multiplayer), gate practice/bots too, and pause on connection loss. A handshake or grant alone is not multiplayer readiness. No automatic anonymous fallback. Keep an explicit isolated development launcher separate.
 
 ## Versioned game details
 

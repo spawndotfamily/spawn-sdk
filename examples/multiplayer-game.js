@@ -1,6 +1,6 @@
 // A registered launch and YOUR creator-operated server are prerequisites.
-import {createSpawnMultiplayerClient} from '@spawn/sdk/multiplayer';
-import {createSpawnStartup} from '@spawn/sdk/startup';
+import {createSpawnMultiplayerClient} from '@spawndotfamily/sdk/multiplayer';
+import {createSpawnStartup} from '@spawndotfamily/sdk/startup';
 const serverOrigin='https://game.example';
 const spawn=createSpawnMultiplayerClient({platformOrigin:'https://spawn.family',serverOrigin});
 let currentSocket=null;

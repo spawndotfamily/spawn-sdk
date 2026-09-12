@@ -1,6 +1,6 @@
 // Runs only on YOUR Node server. This module does not create or host a server.
 import {readFile} from 'node:fs/promises';
-import {createSpawnLaunchVerifier} from '@spawn/sdk/server';
+import {createSpawnLaunchVerifier} from '@spawndotfamily/sdk/server';
 // Obtain public verification configuration when Spawn enables your game.
 // It contains issuer, audience, gameId, environment, publicKeys; no signing secrets.
 const publicConfig=JSON.parse(await readFile('./spawn-public-config.json','utf8'));

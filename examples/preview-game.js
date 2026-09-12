@@ -1,6 +1,6 @@
 // Bundle these imports locally. No API key belongs in the game.
-import {createSpawnGameClient} from '@spawn/sdk';
-import {createSpawnStartup} from '@spawn/sdk/startup';
+import {createSpawnGameClient} from '@spawndotfamily/sdk';
+import {createSpawnStartup} from '@spawndotfamily/sdk/startup';
 const spawn=createSpawnGameClient({platformOrigin:'https://spawn.family'});
 export const startup=createSpawnStartup({connect:()=>spawn.identity()});
 // Subscribe your loading/error screen and keep ALL play modes disabled unless

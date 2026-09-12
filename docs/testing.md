@@ -16,7 +16,7 @@ Open the loopback address printed by the launcher. Choose Alice, Bob or Empty ba
 Inside the uploaded game:
 
 ```js
-import { createSpawnGameClient } from '@spawn/sdk';
+import { createSpawnGameClient } from '@spawndotfamily/sdk';
 const spawn = createSpawnGameClient();
 const player = await spawn.identity();
 // Render player.displayName and player.avatarUrl safely.

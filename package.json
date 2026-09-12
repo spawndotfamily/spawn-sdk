@@ -1,9 +1,8 @@
 {
-  "name": "@spawn/sdk",
-  "version": "0.2.6",
-  "private": true,
+  "name": "@spawndotfamily/sdk",
+  "version": "0.2.7",
   "type": "module",
-  "description": "Creator browser SDK, public-key launch verification for creator-owned servers, and private-preview publishing CLI. Source release; not published on npm.",
+  "description": "Browser game SDK, isolated local testing, and private-preview publishing tools for Spawn.",
   "license": "MIT",
   "bin": {
     "spawn-publish": "dist/cli/run.js",
@@ -51,5 +50,20 @@
   },
   "devDependencies": {
     "typescript": "5.9.3"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/spawndotfamily/spawn-sdk.git"
+  },
+  "homepage": "https://github.com/spawndotfamily/spawn-sdk#readme",
+  "bugs": {
+    "url": "https://github.com/spawndotfamily/spawn-sdk/issues"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
+  "engines": {
+    "node": ">=22.13.0"
   }
 }

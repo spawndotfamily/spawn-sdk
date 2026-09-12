@@ -11,7 +11,7 @@ The SDK's generic multiplayer document protocol must also be enabled on the plat
 ## Browser module
 
 ```js
-import {createSpawnMultiplayerClient} from '@spawn/sdk/multiplayer';
+import {createSpawnMultiplayerClient} from '@spawndotfamily/sdk/multiplayer';
 const spawn=createSpawnMultiplayerClient({
   platformOrigin:'https://spawn.family',
   serverOrigin:'https://game.example'
@@ -29,7 +29,7 @@ Call `dispose()` on teardown. Page navigation disposes automatically, rejects pe
 ## Server-only module
 
 ```js
-import {createSpawnLaunchVerifier} from '@spawn/sdk/server';
+import {createSpawnLaunchVerifier} from '@spawndotfamily/sdk/server';
 const verifier=createSpawnLaunchVerifier(publicVerificationConfig);
 if(!verifier.configured)throw new Error('Configure Spawn public verification.');
 const player=verifier.consume(ticket);
@@ -82,7 +82,7 @@ The browser client allows a bounded 45-second initial document-load phase before
 
 ## Account-required game startup
 
-Follow [the startup integration](startup.md) before enabling any play mode. Use the shared `@spawn/sdk/startup` controller, wait for trusted identity (and verified server admission for multiplayer), gate practice/bots too, and pause on connection loss. A handshake or grant alone is not multiplayer readiness. No automatic anonymous fallback. Keep an explicit isolated development launcher separate.
+Follow [the startup integration](startup.md) before enabling any play mode. Use the shared `@spawndotfamily/sdk/startup` controller, wait for trusted identity (and verified server admission for multiplayer), gate practice/bots too, and pause on connection loss. A handshake or grant alone is not multiplayer readiness. No automatic anonymous fallback. Keep an explicit isolated development launcher separate.
 
 ### Long-running game windows
 
