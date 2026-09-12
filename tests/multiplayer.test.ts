@@ -111,3 +111,66 @@ test('resource refresh arrives on the established grant request without replacin
   assert.deepEqual(paths,['/preview/first/','/preview/renewed/']);assert.equal(f.sent.length,1);
  }finally{client.dispose();f.restore();}
 });
+
+test('match entry presentation request shares the confirmed port without blocking grant renewal',async()=>{
+ const f=fixture(),p=port(),client=createSpawnMultiplayerClient({platformOrigin,serverOrigin});
+ const matchId='123e4567-e89b-42d3-a456-426614174000';
+ try{
+  const nonce=connect(f,p);p.emit({type:'spawn:multiplayer-confirm',version:1,nonce});await client.ready();
+  const entry=client.requestMatchEntry({matchId}),grant=client.requestGrant();await Promise.resolve();
+  const request=p.sent.find(message=>message.type==='spawn:multiplayer-payment-request');
+  assert.equal(request.type,'spawn:multiplayer-payment-request');assert.match(request.requestId,/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i);
+  assert.equal(request.matchId,matchId);assert.equal(request.version,1);assert.equal(request.nonce,nonce);
+  assert.equal(p.sent.some(message=>message.type==='spawn:multiplayer-grant-request'),true);
+  p.emit({type:'spawn:multiplayer-payment-result',version:1,nonce,requestId:request.requestId,matchId,status:'reserved'});
+  assert.deepEqual(await entry,{matchId,status:'reserved'});
+  const grantRequest=p.sent.find(message=>message.type==='spawn:multiplayer-grant-request');
+  p.emit({type:'spawn:multiplayer-grant',version:1,nonce,requestId:grantRequest.requestId,ticket:'fixture.signed.proof',serverOrigin});
+  assert.deepEqual(await grant,{ticket:'fixture.signed.proof'});
+ }finally{client.dispose();f.restore();}
+});
+
+test('match entry accepts only its exact response and sanitizes platform errors',async()=>{
+ const f=fixture(),p=port(),client=createSpawnMultiplayerClient({platformOrigin,serverOrigin});
+ const matchId='123e4567-e89b-42d3-a456-426614174000';
+ try{
+  const nonce=connect(f,p);p.emit({type:'spawn:multiplayer-confirm',version:1,nonce});await client.ready();
+  const invalid=client.requestMatchEntry({matchId:'not-a-match'});
+  await assert.rejects(invalid,/match/i);assert.equal(p.sent.length,1);
+  const entry=client.requestMatchEntry({matchId});await Promise.resolve();
+  const request=p.sent.find(message=>message.type==='spawn:multiplayer-payment-request');
+  let settled=false;void entry.then(()=>{settled=true;},()=>{settled=true;});
+  for(const override of [{requestId:'00000000-0000-4000-8000-000000000000'},{matchId:'223e4567-e89b-42d3-a456-426614174000'},{status:'started'},{extra:true}])
+   p.emit({type:'spawn:multiplayer-payment-result',version:1,nonce,requestId:request.requestId,matchId,status:'reserved',...override});
+  await Promise.resolve();assert.equal(settled,false);
+  p.emit({type:'spawn:multiplayer-payment-error',version:1,nonce,requestId:request.requestId,matchId,message:'private server response'});
+  await assert.rejects(entry,error=>error instanceof Error&&!error.message.includes('private server response'));
+ }finally{client.dispose();f.restore();}
+});
+
+test('one match entry can be pending, same-match requests coalesce, and disposal leaves its outcome indeterminate',async()=>{
+ const f=fixture(),p=port(),client=createSpawnMultiplayerClient({platformOrigin,serverOrigin});
+ const matchId='123e4567-e89b-42d3-a456-426614174000';
+ try{
+  const nonce=connect(f,p);p.emit({type:'spawn:multiplayer-confirm',version:1,nonce});await client.ready();
+  const first=client.requestMatchEntry({matchId}),same=client.requestMatchEntry({matchId});
+  await assert.rejects(client.requestMatchEntry({matchId:'223e4567-e89b-42d3-a456-426614174000'}),/pending/i);
+  await Promise.resolve();assert.equal(p.sent.filter(message=>message.type==='spawn:multiplayer-payment-request').length,1);
+  client.dispose();
+  await assert.rejects(first,/status is unknown/i);
+  await assert.rejects(same,/status is unknown/i);
+  assert.equal(p.closed,true);
+ }finally{client.dispose();f.restore();}
+});
+
+test('match entry request expires after its bounded two-minute presentation window',async t=>{
+ t.mock.timers.enable({apis:['setTimeout','setInterval']});
+ const f=fixture(),p=port(),client=createSpawnMultiplayerClient({platformOrigin,serverOrigin});
+ const matchId='123e4567-e89b-42d3-a456-426614174000';
+ try{
+  const nonce=connect(f,p);p.emit({type:'spawn:multiplayer-confirm',version:1,nonce});await client.ready();
+  const entry=client.requestMatchEntry({matchId});await Promise.resolve();
+  const rejected=assert.rejects(entry,/status is unknown/i);t.mock.timers.tick(120000);await rejected;
+  assert.equal(p.closed,false);
+ }finally{client.dispose();f.restore();}
+});

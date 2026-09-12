@@ -38,6 +38,10 @@ Follow [the startup integration](startup.md) before enabling any play mode. Use 
 
 The source candidate includes local listing/image commands, available in Spawn’s TEST beta with scoped credentials. See [publishing.md](publishing.md#game-details-and-images). They use only documented metadata fields and file-based credentials, not browser player credentials. Metadata edits never approve or publish the game.
 
+## Multiplayer match entry
+
+The separate registered multiplayer flow uses `requestMatchEntry({ matchId })` to open a Spawn-owned TEST reservation overlay. See [match-entry presentation](match-payments.md) for its nonce-bound transport, one-request bound and presentation-only result. This method does not change the existing isolated-preview `requestPayment({ productId: 'entry' })` contract.
+
 ## Spawn-owned TEST payment flow
 
 The platform provides **Confirm → Processing → Paid checkmark → Continue**, with a receipt visible in the player's history and the creator's payment history. This remains non-redeemable TEST behavior. Payer identity in those histories comes from the platform's authenticated account record; the game neither chooses the payer nor receives additional private account fields.

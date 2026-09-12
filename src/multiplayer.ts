@@ -10,6 +10,11 @@ export type SpawnMultiplayerClient = {
     requestGrant(): Promise<{
         ticket: string;
     }>;
+    /** Presentation acknowledgement only. This never authorizes admission, gameplay or rewards. */
+    requestMatchEntry(input: { matchId: string }): Promise<{
+        matchId: string;
+        status: 'reserved' | 'cancelled';
+    }>;
     /** Presentation only. Never authorizes a player, action or reward. */
     reportConnection(state: 'connecting' | 'ready' | 'disconnected'): boolean;
     dispose(): void;
@@ -20,9 +25,10 @@ type ActiveClient = {
     client: SpawnMultiplayerClient;
 };
 const clients = new WeakMap<Window, ActiveClient>(), closedDocuments = new WeakSet<Window>();
-const DURATION = 8000, LOAD_DURATION = 45000, PREFIX = 'spawn:multiplayer-';
+const DURATION = 8000, LOAD_DURATION = 45000, MATCH_ENTRY_DURATION = 120000, PREFIX = 'spawn:multiplayer-';
 const object = (value: unknown): value is Record<string, unknown> => value !== null && typeof value === 'object' && !Array.isArray(value);
 const exact = (value: Record<string, unknown>, keys: string[]) => Object.keys(value).length === keys.length && keys.every(key => Object.hasOwn(value, key));
+const uuid = (value: unknown): value is string => typeof value === 'string' && /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(value);
 function trustedOrigin(value: string) {
     let url: URL;
     try {
@@ -71,6 +77,14 @@ export function createSpawnMultiplayerClient(options: SpawnMultiplayerOptions): 
         reject: (error: Error) => void;
         timer: ReturnType<typeof setTimeout>;
     } | null = null;
+    let pendingMatchEntry: {
+        id: string;
+        matchId: string;
+        promise: Promise<{ matchId: string; status: 'reserved' | 'cancelled' }>;
+        resolve: (value: { matchId: string; status: 'reserved' | 'cancelled' }) => void;
+        reject: (error: Error) => void;
+        timer?: ReturnType<typeof setTimeout>;
+    } | null = null;
     function dispose() {
         if (closed)
             return;
@@ -94,6 +108,11 @@ export function createSpawnMultiplayerClient(options: SpawnMultiplayerOptions): 
             pending.reject(error);
             pending = null;
         }
+        if (pendingMatchEntry) {
+            clearTimeout(pendingMatchEntry.timer);
+            pendingMatchEntry.reject(new Error('The Spawn launch closed; match entry status is unknown.'));
+            pendingMatchEntry = null;
+        }
     }
     function post(value: Record<string, unknown>) { try {
         port?.postMessage({ ...value, version: 1, nonce });
@@ -112,6 +131,24 @@ export function createSpawnMultiplayerClient(options: SpawnMultiplayerOptions): 
             w.removeEventListener('load', loaded);
             clearTimeout(handshakeTimer);
             readyResolve();
+            return;
+        }
+        if (pendingMatchEntry && value.requestId === pendingMatchEntry.id && value.matchId === pendingMatchEntry.matchId) {
+            const request = pendingMatchEntry;
+            const result = value.type === PREFIX + 'payment-result' && exact(value, ['type', 'version', 'nonce', 'requestId', 'matchId', 'status']);
+            const failed = value.type === PREFIX + 'payment-error' && exact(value, ['type', 'version', 'nonce', 'requestId', 'matchId', 'message']);
+            if (!result && !failed)
+                return;
+            if (failed && (typeof value.message !== 'string' || value.message.length > 160))
+                return;
+            if (result && value.status !== 'reserved' && value.status !== 'cancelled')
+                return;
+            pendingMatchEntry = null;
+            clearTimeout(request.timer);
+            if (result)
+                request.resolve({ matchId: request.matchId, status: value.status as 'reserved' | 'cancelled' });
+            else
+                request.reject(new Error('Spawn could not complete this match entry request.'));
             return;
         }
         if (!pending || value.requestId !== pending.id)
@@ -166,6 +203,43 @@ export function createSpawnMultiplayerClient(options: SpawnMultiplayerOptions): 
         post({ type: PREFIX + 'grant-request', requestId: id });
         return promise;
     }
+    function requestMatchEntry({ matchId }: { matchId: string }): Promise<{ matchId: string; status: 'reserved' | 'cancelled' }> {
+        if (!uuid(matchId))
+            return Promise.reject(new Error('A valid match ID is required.'));
+        if (pendingMatchEntry) {
+            if (pendingMatchEntry.matchId === matchId)
+                return pendingMatchEntry.promise;
+            return Promise.reject(new Error('A match entry request is already pending.'));
+        }
+        const id = crypto.randomUUID();
+        let resolve!: (value: { matchId: string; status: 'reserved' | 'cancelled' }) => void;
+        let reject!: (error: Error) => void;
+        const promise = new Promise<{ matchId: string; status: 'reserved' | 'cancelled' }>((yes, no) => { resolve = yes; reject = no; });
+        const request = { id, matchId, promise, resolve, reject, timer: undefined as ReturnType<typeof setTimeout> | undefined };
+        pendingMatchEntry = request;
+        void readyPromise.then(() => {
+            if (closed || pendingMatchEntry !== request)
+                return;
+            if (!confirmed || !port) {
+                pendingMatchEntry = null;
+                request.reject(new Error('The Spawn launch is closed.'));
+                return;
+            }
+            request.timer = setTimeout(() => {
+                if (pendingMatchEntry !== request)
+                    return;
+                pendingMatchEntry = null;
+                request.reject(new Error('Spawn did not respond; match entry status is unknown.'));
+            }, MATCH_ENTRY_DURATION);
+            post({ type: PREFIX + 'payment-request', requestId: id, matchId });
+        }).catch((error: unknown) => {
+            if (pendingMatchEntry !== request)
+                return;
+            pendingMatchEntry = null;
+            request.reject(error instanceof Error ? error : new Error('The Spawn launch is closed.'));
+        });
+        return promise;
+    }
     function loaded() {
         w.removeEventListener('load', loaded);
         if (closed || confirmed) return;
@@ -179,7 +253,7 @@ export function createSpawnMultiplayerClient(options: SpawnMultiplayerOptions): 
         post({ type: PREFIX + 'connection-state', state });
         return !closed;
     }
-    const client = { ready: () => readyPromise, requestGrant, reportConnection, dispose };
+    const client = { ready: () => readyPromise, requestGrant, requestMatchEntry, reportConnection, dispose };
     clients.set(w, { platformOrigin, serverOrigin, client });
     w.addEventListener('message', offer);
     w.addEventListener('pagehide', dispose, { once: true });

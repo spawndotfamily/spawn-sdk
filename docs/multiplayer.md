@@ -24,6 +24,8 @@ Replace `game.example` with your registered origin. Pin both origins in trusted 
 
 `ready()` waits for the full parent/channel confirmation. `requestGrant()` returns `{ticket}` after that confirmation and coalesces concurrent requests. Keep the ticket in memory and send it as your game protocol's first authentication message over WSS, never in the URL, a log or persistent browser storage. The browser cannot verify ownership by reading this token or calling `identity()`; your server decides whether the proof is valid. A player being able to inspect their own short-lived proof does not give them signing authority.
 
+When Spawn has enabled match entry for your game, use `requestMatchEntry({ matchId })` for the Spawn-owned TEST confirmation flow. It returns a presentation acknowledgement only; it does not authorize admission or signal that a reserved match has started. See [match-entry presentation](match-payments.md).
+
 Call `dispose()` on teardown. Page navigation disposes automatically, rejects pending work and prevents reconnecting the old document capability. A timeout or closed launch requires a visible recovery path; do not silently use a claimed identity. Keep your game's existing offline/practice path independent.
 
 ## Server-only module

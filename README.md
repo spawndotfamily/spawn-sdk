@@ -9,7 +9,7 @@ Install the published package using `npm install --save-exact @spawndotfamily/sd
 | Entry point | Purpose | Availability |
 | --- | --- | --- |
 | `@spawndotfamily/sdk` → `createSpawnGameClient` | Isolated uploaded preview: public player label, own saves, unverified submissions and fixed TEST entry receipts | Implemented preview contract; requires a Spawn-launched `/build/...` document |
-| `@spawndotfamily/sdk/multiplayer` → `createSpawnMultiplayerClient` | Request short-lived signed launch proof for your own game server | Requires Spawn to enable the game/server and the generic multiplayer parent protocol; SDK alone does not enable registration |
+| `@spawndotfamily/sdk/multiplayer` → `createSpawnMultiplayerClient` | Request short-lived signed launch proof and, when enabled, ask Spawn to present a TEST match-entry confirmation | Requires Spawn to enable the game/server and the generic multiplayer parent protocol; SDK alone does not enable registration |
 | `@spawndotfamily/sdk/server` → `createSpawnLaunchVerifier` | Verify that proof on your Node server using pinned **public** keys | Local helper, no network calls, hosting, account administration or access to Spawn storage |
 | `spawn-publish` | Upload a prebuilt browser directory and check its private preview | Scoped, expiring publishing credential; listing details/images require explicit listing:write and platform availability; never publication approval |
 
@@ -34,6 +34,8 @@ Player identity returned in a browser is display information. Saves and submitte
 ## Multiplayer on your own server
 
 Use the browser module to request launch proof and the separate server module to verify it. See [the complete multiplayer guide](docs/multiplayer.md) and [plain JavaScript examples](examples). Keep server code outside the uploaded browser build. Your game server controls connections, movement, health, damage, scores and sessions. Never treat a browser-supplied player ID as authority.
+
+For enabled multiplayer matches, `requestMatchEntry({ matchId })` opens a Spawn-owned TEST confirmation. Its `reserved` or `cancelled` result is only a presentation acknowledgement; it is not admission proof or a match-start signal. See [match-entry presentation](docs/match-payments.md).
 
 ## Build and publish a private preview
 
