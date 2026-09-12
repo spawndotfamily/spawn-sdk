@@ -6,7 +6,20 @@ This is the complete workflow for an agent given a short “integrate this game 
 
 Inspect the existing engine, build scripts, dependencies, asset paths, rendering, input and server architecture. Reuse the existing browser export. If a native game requires a substantial port or unsupported features, explain the cost and obtain the creator's decision before starting that port. Keep game rules, rendering, platform integration and server authority separate.
 
-Use the package supplied by the creator's platform, not a guessed registry version or an unrelated source checkout. Read the exact `platformOrigin` and `projectId` from the downloaded publishing credentials file. Fetch `<platformOrigin>/downloads/sdk.json`, validate its relative tarball URL stays on that exact origin, download without following redirects, and verify the SHA-256 before installation. Remote origins require HTTPS; only exact loopback hosts may use HTTP locally. Install the verified local tarball with `npm install --ignore-scripts /path/to/spawn-sdk-<version>.tgz`. If already installed, confirm its version and contract match the platform's supplied package before replacing it.
+Use the public source repository: https://github.com/spawndotfamily/spawn-sdk. No GitHub account connection or game repository is required. Read its `AGENTS.md` and this checklist first. Clone the SDK into a separate tooling directory, record the resolved commit with `git rev-parse HEAD`, inspect `package.json`, and build it locally:
+
+```sh
+git clone https://github.com/spawndotfamily/spawn-sdk.git /path/to/spawn-sdk
+cd /path/to/spawn-sdk
+npm ci --ignore-scripts
+npm run build
+cd /path/to/your-game
+npm install --ignore-scripts /path/to/spawn-sdk
+```
+
+Use the game's package manager equivalent when appropriate. Keep the SDK checkout outside the browser output; bundle imported browser modules normally. The agent downloads source and dependencies as part of installation; the creator does not need to manually download an SDK archive. Do not guess an npm registry release: this is a source package. Keep the resolved commit in the test report for reproducibility. Existing verified platform archives remain optional for older integrations, not a prerequisite.
+
+Read `platformOrigin` and `projectId` privately from the creator credentials. Keep the file outside the game repository and browser output. Stop and report unsupported endpoints or contract mismatches rather than guessing an API or weakening validation.
 
 The credentials file is private input. Ask for its saved location if missing. Do not put its publishing key in the prompt, shell arguments, source, logs, screenshots, browser assets or final answer. Do not open unrelated credentials or server configuration. The CLI reads the file directly.
 

@@ -6,22 +6,32 @@ const playerButtons = Array.from(document.querySelectorAll<HTMLButtonElement>('[
 const status = element<HTMLOutputElement>('status');
 const dialog = element<HTMLDialogElement>('payment');
 const confirm = element<HTMLButtonElement>('confirm'), cancel = element<HTMLButtonElement>('cancel'), next = element<HTMLButtonElement>('continue');
+let connectedState = false;
+let receiptStatus: 'idle' | 'pending' | 'paid' | 'cancelled' | 'failed' = 'idle';
+let lastReceipt: unknown = null;
 let state = new LocalTestState(), dispose: (() => void) | undefined;
 let payment: { quote: LocalQuote; resolve: (value: unknown) => void; reject: (error: Error) => void } | null = null;
-const panel = createCreatorPanel(() => state, () => player.value);
+const devSnapshot = () => structuredClone({
+  environment: 'local-test', connected: connectedState, player: state.identity(player.value),
+  lastScore: state.scores[0] ?? null, receiptStatus, lastReceipt,
+  balances: { player: state.balance(player.value), pool: state.economy.balance('pool'), platform: state.economy.balance('platform') }
+});
+Object.defineProperty(window, '__SPAWN_DEV_STATE__', { get: devSnapshot });
+const updateDiagnostics = () => { element('spawn-dev-state').textContent = JSON.stringify(devSnapshot()); };
+const panel = createCreatorPanel(() => state, () => player.value, updateDiagnostics);
 function refresh() { panel.refresh(); }
 function closePayment() {
-  if (payment) { state.cancel(payment.quote.id); payment.reject(new Error('Local payment cancelled.')); }
-  payment = null; dialog.close();
+  if (payment) { if (receiptStatus !== 'paid') receiptStatus = 'cancelled'; state.cancel(payment.quote.id); payment.reject(new Error('Local payment cancelled.')); }
+  payment = null; dialog.close(); refresh();
 }
 function requestPayment(launch: string, product: string) {
   if (payment) throw new Error('A payment confirmation is already open.');
   const quote = state.quote(player.value, launch, product);
   if (quote.receipt) return Promise.resolve(quote.receipt);
   return new Promise((resolve, reject) => {
-    payment = { quote, resolve, reject };
+    payment = { quote, resolve, reject }; receiptStatus = 'pending'; refresh();
     element('payment-title').textContent = 'Confirm test payment'; element('payment-title').className = '';
-    element('payment-copy').textContent = 'Pay 10 TEST to this local test game?';
+    element('payment-copy').textContent = 'Pay 10 TEST? The game pool receives 9.5 TEST; Spawn receives 0.5 TEST (5%, included).';
     confirm.hidden = cancel.hidden = false; next.hidden = true; confirm.disabled = false;
     document.exitPointerLock?.(); dialog.showModal();
   });
@@ -37,19 +47,19 @@ confirm.onclick = () => {
   requestAnimationFrame(() => requestAnimationFrame(() => {
     if (payment !== current) return;
     try {
-      state.confirm(current.quote.id); refresh();
+      lastReceipt = state.confirm(current.quote.id); receiptStatus = 'paid'; refresh();
       element('payment-title').textContent = 'Paid'; element('payment-title').className = 'paid';
-      element('payment-copy').textContent = '10 TEST sent to the local test game.';
+      element('payment-copy').textContent = 'Paid 10 TEST: 9.5 to the game pool and 0.5 to Spawn.';
       confirm.hidden = cancel.hidden = true; next.hidden = false; next.focus();
-    } catch (error) { current.reject(error instanceof Error ? error : new Error('Local payment failed.')); payment = null; dialog.close(); }
+    } catch (error) { receiptStatus = 'failed'; current.reject(error instanceof Error ? error : new Error('Local payment failed.')); payment = null; dialog.close(); refresh(); }
   }));
 };
 next.onclick = () => {
   if (!payment) return;
-  const current = payment; payment = null; dialog.close(); current.resolve(state.confirm(current.quote.id));
+  const current = payment; payment = null; dialog.close(); refresh(); current.resolve(state.confirm(current.quote.id));
 };
 function openGame() {
-  dispose?.(); closePayment(); refresh();
+  dispose?.(); closePayment(); receiptStatus = 'idle'; lastReceipt = null; refresh();
   const token = document.body.dataset.documentToken!;
   const launch = crypto.randomUUID(), identity = player.value;
   const frame = document.createElement('iframe');
@@ -59,7 +69,7 @@ function openGame() {
   const queued: unknown[] = [], pending = new Set<string>();
   let timer: ReturnType<typeof setTimeout> | undefined;
   const reset = setInterval(() => { requests = 0; }, 60000);
-  const stop = () => { active = false; clearTimeout(timer); clearInterval(reset); port?.close(); window.removeEventListener('message', receive); closePayment(); status.textContent = 'Disconnected. Reopen the game to reconnect.'; };
+  const stop = () => { connectedState = false; active = false; clearTimeout(timer); clearInterval(reset); port?.close(); window.removeEventListener('message', receive); closePayment(); status.textContent = 'Disconnected. Reopen the game to reconnect.'; refresh(); };
   async function dispatch(raw: unknown) {
     const data = raw as { type?: string; version?: number; id?: string; method?: string; payload?: Record<string, unknown> };
     if (!active || !ready || !data || data.type !== 'spawn:request' || data.version !== 1 || typeof data.id !== 'string' || data.id.length > 80 || pending.has(data.id)) return;
@@ -87,7 +97,7 @@ function openGame() {
     port.onmessage = ({ data }) => {
       if (!active) return;
       if (data?.type === 'spawn:ready-ack') {
-        if (!ready && nonce && data.nonce === nonce && data.version === 1 && loads === 1) { ready = true; clearTimeout(timer); for (const request of queued.splice(0)) void dispatch(request); }
+        if (!ready && nonce && data.nonce === nonce && data.version === 1 && loads === 1) { ready = true; connectedState = true; refresh(); clearTimeout(timer); for (const request of queued.splice(0)) void dispatch(request); }
       } else if (ready) void dispatch(data);
       else if (queued.length < 20) queued.push(data); else stop();
     };
@@ -99,9 +109,20 @@ function openGame() {
   status.textContent = 'Waiting for the SDK…';
   element('frame-slot').replaceChildren(frame); dispose = stop;
 }
-element('reopen').onclick = openGame;
+element('reopen').onclick = async () => {
+  const button = element<HTMLButtonElement>('reopen'); button.disabled = true;
+  dispose?.(); status.textContent = 'Checking rebuilt files…';
+  try {
+    const response = await fetch('/__spawn/rescan', { method: 'POST' });
+    if (!response.ok) throw new Error('Build not ready. Finish rebuilding and try again.');
+    const value = await response.json() as { documentToken?: string };
+    if (!/^[A-Za-z0-9_-]{43}$/.test(value.documentToken ?? '')) throw new Error('Invalid rescan response.');
+    document.body.dataset.documentToken = value.documentToken; openGame();
+  } catch (error) { status.textContent = error instanceof Error ? error.message : 'Unable to rescan the build.'; }
+  finally { button.disabled = false; }
+};
 element('disconnect').onclick = () => dispose?.();
-element('reset').onclick = () => { dispose?.(); state = new LocalTestState(); panel.reset(); openGame(); };
+element('reset').onclick = () => { dispose?.(); state = new LocalTestState(); receiptStatus = 'idle'; lastReceipt = null; panel.reset(); openGame(); };
 for (const button of playerButtons) button.onclick = () => { player.value = button.dataset.player!; for (const item of playerButtons) item.setAttribute('aria-pressed', String(item === button)); openGame(); };
 window.addEventListener('pagehide', () => dispose?.());
 openGame();

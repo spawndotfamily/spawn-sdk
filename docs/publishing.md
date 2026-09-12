@@ -4,15 +4,22 @@ This package supports a local creator preview loop. It does not publish an npm r
 
 Before integrating a game, read [AGENTS.md](../AGENTS.md), [security guidance](security.md), and [integration boundaries](integration.md). Inspect the existing project and reuse its browser build when possible. For a native project, explain the browser port and ask the creator before making substantial changes. Stop after returning the private preview for creator review.
 
-## Install the local SDK tarball
+## Use the public SDK source
 
-The platform may provide a downloaded `spawn-sdk-<version>.tgz`. Install that file in the creator’s local game workspace:
+Use the public source repository: https://github.com/spawndotfamily/spawn-sdk. No GitHub account connection or game repository is required. Read its `AGENTS.md` and this checklist first. Clone the SDK into a separate tooling directory, record the resolved commit with `git rev-parse HEAD`, inspect `package.json`, and build it locally:
 
 ```sh
-npm install --ignore-scripts /path/to/spawn-sdk-<version>.tgz
+git clone https://github.com/spawndotfamily/spawn-sdk.git /path/to/spawn-sdk
+cd /path/to/spawn-sdk
+npm ci --ignore-scripts
+npm run build
+cd /path/to/your-game
+npm install --ignore-scripts /path/to/spawn-sdk
 ```
 
-The package exposes `createSpawnGameClient({ platformOrigin })` for the sandboxed browser game and the `spawn-publish` executable for a prebuilt browser directory.
+Use the game's package manager equivalent when appropriate. Keep the SDK checkout outside the browser output; bundle imported browser modules normally. The agent downloads source and dependencies as part of installation; the creator does not need to manually download an SDK archive. Do not guess an npm registry release: this is a source package. Keep the resolved commit in the test report for reproducibility. Existing verified platform archives remain optional for older integrations, not a prerequisite.
+
+Read `platformOrigin` and `projectId` privately from the creator credentials. Keep the file outside the game repository and browser output. Stop and report unsupported endpoints or contract mismatches rather than guessing an API or weakening validation.
 
 ## Upload a prebuilt browser directory
 

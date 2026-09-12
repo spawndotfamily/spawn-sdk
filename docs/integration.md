@@ -54,3 +54,16 @@ Use [local testing](testing.md) for fake accounts and the same isolated SDK hand
 
 
 Local integration tests can exercise the complete fake entry → pool → manual reward loop in the launcher-owned creator panel. Follow [local testing](testing.md). Keep the browser client unchanged when moving to a private Spawn preview, and never fall back to local identity on connection failure. This is simulation coverage, not live-token or multiplayer-server validation.
+
+## Platform fees and creator rewards
+
+The approved TEST fee policy is 5% on tokens entering a creator pool: a 10 TEST payment means 0.5 TEST for Spawn and 9.5 TEST for the creator pool. The rate is configurable by Spawn; use the confirmed quote rather than hard-coding a permanent rate. The fee is included in the approved total, not added afterwards. Outgoing rewards and pool withdrawals incur no additional platform fee.
+
+A creator may retain part of the available pool under their disclosed game rules; that is a creator fee, separate from Spawn’s platform fee. Explain entry cost, platform fee, creator retention and available rewards before participation. Do not add an unapproved player charge or invent an automatic creator-fee API.
+
+The local launcher now models this split and shows a separate Spawn fee balance. Hosted fee migration and per-match multiplayer settlement are still being integrated; this paragraph does not enable a new reward endpoint. Existing SDK receipt fields remain compatible. AI agents must only call documented, available APIs and keep automatic payouts disabled if the required server settlement contract is unavailable.
+
+
+### TEST payment receipt
+
+`requestPayment({ productId: 'entry' })` resolves after the Spawn confirmation/Continue flow with `{ id: string, intentId: string, amount: 10, asset: 'TEST', environment: 'sandbox', status: 'paid' }`. Amounts are token units. Cancellation or failure rejects the request; do not unlock participation on rejection or infer success from an overlay. The receipt is not an authorization credential for server payouts.

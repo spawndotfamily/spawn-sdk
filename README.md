@@ -52,7 +52,7 @@ Source is MIT licensed. Spawn branding and third-party game assets are not inclu
 
 ## Creator integration workflow
 
-Agents integrating an existing game must follow [the complete creator checklist](docs/creator-checklist.md), starting from the downloaded credentials and verified platform SDK package. Keep ordinary launches free; optional fixed TEST interactions require a separate deliberate player action and Spawn confirmation. Multiplayer launch readiness allows up to 45 seconds for initial document loading, then 8 seconds for channel confirmation. Grant requests keep their 8-second deadline. Navigation still permanently closes that document.
+Agents integrating an existing game must follow [the complete creator checklist](docs/creator-checklist.md), starting from the private creator credentials and the public SDK source workflow. Keep ordinary launches free; optional fixed TEST interactions require a separate deliberate player action and Spawn confirmation. Multiplayer launch readiness allows up to 45 seconds for initial document loading, then 8 seconds for channel confirmation. Grant requests keep their 8-second deadline. Navigation still permanently closes that document.
 
 ## Account-required game startup
 
@@ -69,3 +69,5 @@ Run `./node_modules/.bin/spawn-publish check ./dist`, then `./node_modules/.bin/
 The website's GitHub importer accepts a prebuilt repository folder or an Actions artifact named `spawn-browser-build`. Private repositories require a configured GitHub App and creator authorization. Build scripts run on the creator's computer or their GitHub Actions runner, never on Spawn's accounts server. See [publishing](docs/publishing.md#github-builds).
 
 Multiplayer integrations can refresh protected game-server resource paths through the established admission channel without reloading the game. See [long-running game windows](docs/multiplayer.md#long-running-game-windows).
+
+Local creator testing includes the configurable incoming platform fee and a separate fake Spawn fee balance. See [fee integration](docs/integration.md#platform-fees-and-creator-rewards). Hosted multiplayer settlement is a separate integration and remains unavailable until enabled.

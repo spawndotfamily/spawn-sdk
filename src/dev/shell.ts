@@ -1,11 +1,12 @@
 export function launcherHtml(token: string) {
   return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Spawn · Local testing</title><link rel="stylesheet" href="/__spawn/style.css"></head>
 <body data-document-token="${token}">
-<header><strong>SPAWN <span>LOCAL TESTING</span></strong><div class="players" aria-label="Test player"><button data-player="alice" aria-pressed="true">Alice</button><button data-player="bob" aria-pressed="false">Bob</button><button data-player="empty" aria-pressed="false">Empty balance</button></div><button id="reopen">Reopen game</button><button id="disconnect">Disconnect</button><button id="reset">Reset testing</button></header>
+<header><strong>SPAWN <span>LOCAL TESTING</span></strong><div class="players" aria-label="Test player"><button data-player="alice" aria-pressed="true">Alice</button><button data-player="bob" aria-pressed="false">Bob</button><button data-player="empty" aria-pressed="false">Empty balance</button></div><button id="reopen">Rebuild / reload</button><button id="disconnect">Disconnect</button><button id="reset">Reset testing</button></header>
 <div class="notice">Fake accounts, fake tokens. Nothing is sent to Spawn. Reloading clears this session. Test your private Spawn preview before publishing.</div>
+<output id="spawn-dev-state" hidden aria-hidden="true"></output>
 <main><section id="game" aria-label="Game preview"><div id="frame-slot"></div></section><aside>
 <section class="panel-section"><p class="eyebrow">Player</p><h1 id="balance"></h1><p id="status" role="status">Waiting for the SDK…</p></section>
-<section class="panel-section"><h2>Creator test panel</h2><div class="balances"><div><span>Game pool</span><strong id="pool-balance"></strong></div><div><span>Creator wallet</span><strong id="creator-balance"></strong></div></div>
+<section class="panel-section"><h2>Creator test panel</h2><div class="balances"><div><span>Game pool</span><strong id="pool-balance"></strong></div><div><span>Creator wallet</span><strong id="creator-balance"></strong></div><div><span>Spawn fees</span><strong id="platform-balance"></strong></div></div>
 <label for="transfer-amount">Amount <span class="hint">TEST tokens</span></label><input id="transfer-amount" type="number" min="1" step="1" value="10" inputmode="numeric">
 <div class="pool-actions"><button id="fund-pool">Top up pool</button><button id="withdraw-pool">Withdraw</button><button id="reward-player" class="primary">Reward Alice</button></div>
 <p id="transfer-feedback" class="hint" role="status" aria-live="polite">Rewards go to the selected test player.</p></section>

@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+- Make public GitHub source the default creator installation path; keep direct private-preview upload independent of GitHub connection.
+- Add validated local rebuild/rescan and launcher-only diagnostic state for agent verification.
+
+- Model configurable incoming platform fees in the isolated TEST launcher, with separate creator and platform balances and fee-free outgoing rewards.
+- Document platform fees separately from creator retention. Hosted per-match settlement remains pending; no new reward API is exposed.
+
 ## 0.2.6 — 2026-09-11
 
 - Verify each upload chunk against the inspected build before transmission; stop if local files change during publishing.
