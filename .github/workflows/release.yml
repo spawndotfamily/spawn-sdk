@@ -34,6 +34,13 @@ jobs:
         run: |
           node scripts/release-notes.mjs "$RELEASE_VERSION" > release-notes.md
           cat release-notes.md >> "$GITHUB_STEP_SUMMARY"
+          if git ls-remote --exit-code --tags origin "refs/tags/v$RELEASE_VERSION"; then
+            echo 'This release tag already exists; inspect it before publishing.' >&2
+            exit 1
+          else
+            status=$?
+            test "$status" -eq 2 || exit "$status"
+          fi
       - run: npm ci --ignore-scripts
       - run: npm test
       - run: npm run check
