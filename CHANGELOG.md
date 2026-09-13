@@ -2,6 +2,9 @@
 
 ## 0.2.10 — 2026-09-13
 
+### Added
+- Hosted-overlay acceptance checks for creator agents, including toast dismissal and removal of duplicate game-drawn banners.
+
 ### Changed
 - Agent instructions define one consistent hosted overlay: a brief top-right connection toast and bottom-right Transactions button, supplied by Spawn.
 - Existing-game guidance removes duplicate Spawn badges/toolbars and distinguishes local developer panels from published UI.
