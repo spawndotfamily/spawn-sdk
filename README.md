@@ -34,7 +34,7 @@ window.addEventListener('pagehide',()=>spawn.dispose(),{once:true});
 
 The launcher supplies the public platform origin; an explicit trusted origin can override it. Local preview development uses literal loopback HTTP. The client operates inside the isolated Spawn frame; it never forwards an account cookie to the game origin. Save at checkpoints, not each frame. Handle conflicts and quota errors without deleting unrelated records.
 
-Limits: 12,000 bytes per record, 100 keys / 65,536 bytes per player per game, and 10,000 records / 10,000,000 bytes per game, subject to shared platform capacity. These are small JSON saves, not an asset/replay store or database-administration connection. Larger storage belongs on your own service. A raw SQL, creator-backend database credential or arbitrary query API is not supplied.
+Limits: 65,536 JSON bytes per record, 256 records / 1,048,576 bytes per player per game, and 100,000 records / 100,000,000 bytes per game, subject to shared capacity. These are JSON payload allowances, not disk guarantees. See [game data](docs/game-data.md). Creator agents can read and manage their own game data before publishing using the private [database CLI](docs/creator-database.md); no raw SQL or browser database credentials are exposed.
 
 Player identity returned in a browser is display information. Saves and submitted scores are untrusted. No wallet, real charge, redeemable reward or guaranteed anti-cheat is provided. Existing `requestPayment('entry')` is fixed sandbox TEST behavior, not live payments.
 

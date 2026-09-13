@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.2.12 — 2026-09-13
+
+### Added
+- Creator database commands before any upload: register-self, add-score, edit-score and remove-score.
+- Step-by-step examples for hosted data access from a local agent, separate from the credential-free simulator.
+
+### Changed
+- README storage limits now match the current hosted quotas: 64 KiB per record, 1 MiB per player, 100 MB per game.
+- Agents are told not to require publication just to inspect a game's database.
+
+### Upgrade notes
+- New commands require the matching platform deployment and credentials with data permissions. Existing read/write commands remain compatible.
+- register-self uses the credential owner's real game identity; it does not create fake accounts. Creator-added scores are marked unpaid and unverified, with retry IDs. Edits do not authorize rewards.
+- Browser identity, overlay, sandbox and payment confirmation are unchanged. Network failures remain separate from SDK installation.
+
 ## 0.2.11 — 2026-09-13
 
 ### Added

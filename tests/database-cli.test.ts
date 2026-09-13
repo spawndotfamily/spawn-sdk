@@ -50,9 +50,21 @@ test("agent database commands require explicit scoped credentials and preserve v
       value: { inventory: [[{ item: "bow", count: 2 }]] },
     });
     assert.equal(calls[0].init?.redirect, "error");
+    assert.equal(await run(["database", "register-self"]), 0);
+    assert.equal(calls[1].init?.method, "POST");
+    assert.equal(calls[1].init?.body, "{}");
+    await writeFile(patch, JSON.stringify({ playerId: id, score: 42, details: {}, submissionId: id }));
+    assert.equal(await run(["database", "add-score", patch]), 0);
+    assert.match(calls[2].url, /database\/submissions$/);
+    await writeFile(patch, JSON.stringify({ playerId: id, score: 50, expectedVersion: 1 }));
+    assert.equal(await run(["database", "edit-score", "_spawn_score_" + id, patch]), 0);
+    assert.equal(calls[3].init?.method, "PUT");
+    await writeFile(patch, JSON.stringify({ playerId: id, expectedVersion: 2 }));
+    assert.equal(await run(["database", "remove-score", "_spawn_score_" + id, patch]), 0);
+    assert.equal(calls[4].init?.method, "DELETE");
     await writeFile(credentials, JSON.stringify({ ...config, scopes: ["build:upload"] }));
     assert.equal(await run(["database", "players"]), 1);
-    assert.equal(calls.length, 1);
+    assert.equal(calls.length, 5);
     assert.match(errors.at(-1)!, /data:read|credential/i);
   } finally {
     await rm(dir, { recursive: true, force: true });
