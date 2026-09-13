@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+- Add a short creator capability menu and one-prompt handoff; separate TEST currency from release status.
+- Simplify creator AGENTS.md, retain detailed maintainer contracts, remove repeated payment-flow text.
+- Clarify existing-game folders, browser play-test evidence and approval boundaries.
+
 ## 0.2.7
 
 - Prepare the first public npm package as `@spawndotfamily/sdk`; the `@spawn` npm namespace is unavailable. Existing source integrations may migrate their imports or use an npm alias.

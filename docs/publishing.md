@@ -113,3 +113,8 @@ For an npm game, adapt [the example workflow](../examples/github-browser-build.y
 Spawn downloads the chosen commit/artifact and validates it; it does not run repository install/build scripts. GitHub App access requests read-only Contents, Actions and Metadata for selected repositories. Connections expire and can be disconnected; reauthorize when prompted. Imports always produce a private preview. The creator's final approval and Spawn's first-listing review remain required. Automatic webhook imports and automatic publication are not enabled.
 
 GitHub-hosted runner and artifact limits belong to the creator's GitHub plan. Private repositories have a limited free allowance; additional usage may cost money. Keep artifacts small and short-lived. Check [GitHub's current usage policy](https://docs.github.com/en/billing/concepts/product-billing/github-actions) before enabling workflows. The App must first be registered and configured by the Spawn operator; do not claim private connection works when the UI says setup is pending.
+
+
+## Existing browser builds
+
+`dist` is optional. Select `.` for a repository-root index.html, `web` for web/index.html, or any supported folder containing the completed index.html and its browser assets. Keep relative asset paths. Source-only engine projects must be exported first. GitHub imports committed files on the selected branch or a completed spawn-browser-build artifact; they do not run build commands or automatically import every push. A local finished folder can be uploaded directly by the agent without GitHub.

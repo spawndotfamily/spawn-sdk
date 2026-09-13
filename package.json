@@ -40,7 +40,9 @@
     "CHANGELOG.md",
     "docs/creator-checklist.md",
     "docs/startup.md",
-    "docs/testing.md"
+    "docs/testing.md",
+    "docs/creator-guide.md",
+    "docs/maintainers.md"
   ],
   "scripts": {
     "build": "tsc",

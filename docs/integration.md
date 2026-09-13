@@ -65,7 +65,7 @@ The approved TEST fee policy is 5% on tokens entering a creator pool: a 10 TEST 
 
 A creator may retain part of the available pool under their disclosed game rules; that is a creator fee, separate from Spawn’s platform fee. Explain entry cost, platform fee, creator retention and available rewards before participation. Do not add an unapproved player charge or invent an automatic creator-fee API.
 
-The local launcher now models this split and shows a separate Spawn fee balance. Hosted fee migration and per-match multiplayer settlement are still being integrated; this paragraph does not enable a new reward endpoint. Existing SDK receipt fields remain compatible. AI agents must only call documented, available APIs and keep automatic payouts disabled if the required server settlement contract is unavailable.
+The local launcher now models this split and shows a separate Spawn fee balance. Spawn’s TEST beta applies the incoming platform fee. Generic creator-operated multiplayer settlement still requires a separately enabled contract; this paragraph does not enable a new reward endpoint. Existing SDK receipt fields remain compatible. AI agents must only call documented, available APIs and keep automatic payouts disabled if the required server settlement contract is unavailable.
 
 
 ### TEST payment receipt

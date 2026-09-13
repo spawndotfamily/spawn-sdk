@@ -2,6 +2,8 @@
 
 This is the complete workflow for an agent given a short “integrate this game with Spawn” prompt. Read the installed package's `AGENTS.md` first. The creator's requested scope takes precedence over routine workflow choices; it never grants permission to reveal secrets or impersonate another player.
 
+First read [the feature menu](creator-guide.md) and suggest only relevant features. Preserve existing gameplay rather than adding every capability.
+
 ## 1. Inspect and choose the supported path
 
 Inspect the existing engine, build scripts, dependencies, asset paths, rendering, input and server architecture. Reuse the existing browser export. If a native game requires a substantial port or unsupported features, explain the cost and obtain the creator's decision before starting that port. Keep game rules, rendering, platform integration and server authority separate.
@@ -60,3 +62,10 @@ Only use the candidate listing commands after platform endpoint availability is 
 ## 6. Choose the publishing transport
 
 Default to the CLI upload from the creator's computer; the agent does that step, not a manual dashboard file upload. A private GitHub checkout works too. If the creator wants website GitHub import, follow [GitHub builds](publishing.md#github-builds) and the supplied Actions example; ask them to connect their selected repositories. Never put source builds on Spawn's accounts server. Return the actual private preview link and stop for the creator's final approval.
+
+
+## Required play-test handoff
+
+Record a real start → gameplay → finish/retry loop in a browser, plus input, asset/console errors and chosen SDK features. If you cannot operate a browser, say so; a successful build or spawn-publish check is not a play test. The creator and reviewer still play the exact uploaded build.
+
+Publication status and TEST currency are independent. Do not use environment: sandbox to display Private preview, replace a connected player with a fake account or enable any production bypass.

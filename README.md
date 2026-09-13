@@ -1,5 +1,10 @@
 # Spawn SDK
 
+**Start here:** [Feature menu and one-prompt workflow](docs/creator-guide.md). Choose only what your game needs; a finished browser game does not need a Spawn template or GitHub connection.
+
+Published games still use non-redeemable TEST services today. `environment: 'sandbox'` describes the currency environment, not whether a game is approved or local.
+
+
 Integrate a browser game with Spawn without access to Spawn's private infrastructure. Creators operate their own multiplayer servers. Spawn provides an optional small, player-and-game-scoped save store; it does not provision creator servers or give creators access to its database engine, VPS or administrator services.
 
 Install the published package using `npm install --save-exact @spawndotfamily/sdk@0.2.7 --ignore-scripts`. Read `node_modules/@spawndotfamily/sdk/AGENTS.md` and `node_modules/@spawndotfamily/sdk/docs/creator-checklist.md` before integrating. Bundle browser dependencies with your game; no UI framework or runtime SDK dependency is required. The public GitHub repository remains available for source inspection.
@@ -8,7 +13,7 @@ Install the published package using `npm install --save-exact @spawndotfamily/sd
 
 | Entry point | Purpose | Availability |
 | --- | --- | --- |
-| `@spawndotfamily/sdk` → `createSpawnGameClient` | Isolated uploaded preview: public player label, own saves, unverified submissions and fixed TEST entry receipts | Implemented preview contract; requires a Spawn-launched `/build/...` document |
+| `@spawndotfamily/sdk` → `createSpawnGameClient` | Isolated uploaded game: public player label, own saves, unverified submissions and fixed TEST entry receipts | Implemented browser contract; requires a Spawn-launched `/build/...` document |
 | `@spawndotfamily/sdk/multiplayer` → `createSpawnMultiplayerClient` | Request short-lived signed launch proof and, when enabled, ask Spawn to present a TEST match-entry confirmation | Requires Spawn to enable the game/server and the generic multiplayer parent protocol; SDK alone does not enable registration |
 | `@spawndotfamily/sdk/server` → `createSpawnLaunchVerifier` | Verify that proof on your Node server using pinned **public** keys | Local helper, no network calls, hosting, account administration or access to Spawn storage |
 | `spawn-publish` | Upload a prebuilt browser directory and check its private preview | Scoped, expiring publishing credential; listing details/images require explicit listing:write and platform availability; never publication approval |
