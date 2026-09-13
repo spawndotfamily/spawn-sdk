@@ -1,3 +1,4 @@
+import { moduleReferences, assertModuleFiles, MODULE_INSPECTION_BYTES, type ModuleReference } from './module-files.ts';
 import {
   PublishCliError,
   isRecord,
@@ -278,7 +279,8 @@ async function inspectFile(
   isEntry: boolean,
   isHtml: boolean,
   forbiddenSecret?: string,
-): Promise<{ sha256: string; bytes: number; entryText: string; chunkSha256: string[] }> {
+  modulePath?: string,
+): Promise<{ sha256: string; bytes: number; entryText: string; chunkSha256: string[]; references: ModuleReference[] }> {
   if (stat.size > STREAM_MAX_FILE_BYTES) {
     throw new PublishCliError(`A browser asset exceeds the ${formatLimit(STREAM_MAX_FILE_BYTES)} byte file limit.`);
   }
@@ -303,6 +305,8 @@ async function inspectFile(
     const decoder = new TextDecoder();
     const carry = { value: '' };
     const entry = { value: '' };
+    let moduleSource = '';
+    const moduleDecoder = modulePath ? new TextDecoder() : null;
     let bytes = 0;
     while (bytes < stat.size) {
       const want = Math.min(buffer.byteLength, stat.size - bytes);
@@ -310,6 +314,7 @@ async function inspectFile(
       if (bytesRead <= 0) fail('Build file ended while it was being inspected.');
       const chunk = buffer.subarray(0, bytesRead);
       hash.update(chunk);
+      if (moduleDecoder) moduleSource += moduleDecoder.decode(chunk, { stream: true });
       let chunkCursor = 0;
       while (chunkCursor < chunk.byteLength) {
         const chunkLength = Math.min(chunk.byteLength - chunkCursor, CHUNK_BYTES - chunkOffset);
@@ -337,7 +342,8 @@ async function inspectFile(
     const after = await handle.stat();
     if (!sameSnapshot(after, stat)) fail('Build file changed while it was being inspected.');
     if (chunkOffset > 0) chunkSha256.push(chunkHash.digest('hex'));
-    return { sha256: hash.digest('hex'), bytes, entryText: entry.value, chunkSha256 };
+    const references = modulePath ? await moduleReferences(moduleSource + moduleDecoder!.decode(), modulePath) : [];
+    return { sha256: hash.digest('hex'), bytes, entryText: entry.value, chunkSha256, references };
   } catch (error) {
     if (error instanceof PublishCliError) throw error;
     throw new PublishCliError('Unable to read a regular browser build file.');
@@ -371,6 +377,7 @@ async function prepareBrowserBuild(directory: string, sourceCommit?: string, for
   }
 
   const files: PreparedBuildFile[] = [];
+  const references: ModuleReference[] = [];
   let totalBytes = 0;
   let traversedEntries = 0;
   let entryText = '';
@@ -433,7 +440,9 @@ async function prepareBrowserBuild(directory: string, sourceCommit?: string, for
           relativePath === 'index.html',
           extensionOf(relativePath) === 'html',
           forbiddenSecret,
+          /\.m?js$/i.test(relativePath) && stat.size <= MODULE_INSPECTION_BYTES ? relativePath : undefined,
         );
+        references.push(...inspected.references);
         totalBytes += inspected.bytes;
         if (totalBytes > STREAM_MAX_TOTAL_BYTES) {
           throw new PublishCliError(`The browser build exceeds the ${formatLimit(STREAM_MAX_TOTAL_BYTES)} byte decoded size limit.`);
@@ -469,6 +478,7 @@ async function prepareBrowserBuild(directory: string, sourceCommit?: string, for
   if (!entryText || !/<(?:html|body|canvas|script|div|button)\b/i.test(entryText)) {
     throw new PublishCliError('The index.html entry must contain a browser page.');
   }
+  assertModuleFiles(references, files);
   const manifestFiles = files.map(({ path, bytes, sha256 }) => ({ path, bytes, sha256 }));
   const manifest: StreamingBuildManifest = {
     entry: 'index.html',

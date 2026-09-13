@@ -1,3 +1,4 @@
+import { parseDatabaseCommand, runDatabaseCommand, DATABASE_USAGE, type DatabaseCommand } from './database.ts';
 import { readBoundedFile } from './files.ts';
 import { PublishCliError, PROJECT_ID_PATTERN, normalizeApiUrl, validatePublishConfig, isRecord, redact, requestJson } from './api.ts';
 import type { PublishConfig, FetchLike } from './api.ts';
@@ -112,6 +113,7 @@ type RuntimeProcess = {
 };
 
 type Command =
+  | DatabaseCommand
   | ListingCommand
   | { kind: 'help' }
   | { kind: 'check'; directory: string }
@@ -123,6 +125,7 @@ export const CLI_USAGE = `Usage:
   spawn-publish publish <browser-build-directory> [--credentials <file>] [--source-commit <40-hex-commit>]
   spawn-publish status <release-id> [--credentials <file>]
 ${LISTING_USAGE}
+${DATABASE_USAGE}
 `;
 
 function runtimeProcess(): RuntimeProcess {
@@ -388,7 +391,7 @@ export async function readCredentialsFile(credentialsPath: string, now = Date.no
   if (!Number.isFinite(expiresAt)) throw new PublishCliError('The credentials file has an invalid expiry.');
   if (expiresAt <= now) throw new PublishCliError('The credentials file has expired.');
 
-  if (parsed.scopes !== undefined && (!Array.isArray(parsed.scopes) || parsed.scopes.length > 3 || parsed.scopes.some(scope => typeof scope !== 'string' || !['build:read', 'build:upload', 'listing:write'].includes(scope)) || new Set(parsed.scopes).size !== parsed.scopes.length)) {
+  if (parsed.scopes !== undefined && (!Array.isArray(parsed.scopes) || parsed.scopes.length > 6 || parsed.scopes.some(scope => typeof scope !== 'string' || !['build:read', 'build:upload', 'listing:write', 'data:read', 'data:write', 'data:configure'].includes(scope)) || new Set(parsed.scopes).size !== parsed.scopes.length)) {
     throw new PublishCliError('The credentials file has invalid scopes.');
   }
   const config = {
@@ -439,6 +442,8 @@ export function parseCommand(argv: string[]): Command {
       positional.push(argument);
     }
   }
+
+  if (positional[0] === 'database') return parseDatabaseCommand(positional, credentialsPath);
 
   if (positional[0] === 'listing' || positional[0] === 'image') {
     return parseListingCommand(positional, credentialsPath);
@@ -579,7 +584,7 @@ export async function main(
 
     if (command.kind === 'check') {
       const bundle = await inspectBrowserBuild(command.directory);
-      output.log(JSON.stringify({ format: 'spawn-browser-v1', entry: bundle.entry, files: bundle.files.length, bytes: bundle.bytes, playableVerified: false, next: 'Run spawn-dev on this directory, then upload a private preview with spawn-publish publish.' }));
+      output.log(JSON.stringify({ format: 'spawn-browser-v1', entry: bundle.entry, files: bundle.files.length, bytes: bundle.bytes, playableVerified: false, moduleCheck: 'Relative imports checked in JavaScript files up to 16 MiB; verify other assets, computed imports and larger scripts in the browser.', next: 'Run spawn-dev on this directory, then upload a private preview with spawn-publish publish.' }));
       return 0;
     }
     const config = command.credentialsPath
@@ -589,6 +594,12 @@ export async function main(
     if (command.kind === 'status') {
       const response = await getReleaseStatus(config, command.releaseId, fetchImplementation);
       output.log(formatReleaseSummary(response, publishKey, config.apiUrl));
+      return 0;
+    }
+
+    if (command.kind === 'database') {
+      const response = await runDatabaseCommand(config, command, fetchImplementation);
+      output.log(redact(JSON.stringify(response), publishKey));
       return 0;
     }
 

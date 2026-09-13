@@ -29,7 +29,7 @@ Browser-owned saves are suitable for casual progress, not trusted inventories wi
 
 ## Shared leaderboard
 
-The creator first opens **Players & rewards → In-game leaderboard**, chooses **Share with players**, and saves a policy: best per player, latest per player, or every run; higher or lower wins. Sharing defaults off, including existing games. This choice reveals stored names/avatars/scores to people playing this game. It never shares inventory, arbitrary score details, account email, review notes or another game's records. Publishing credentials do not grant leaderboard-setting or private-player administration rights; the creator makes this choice in the dashboard.
+Ask the creator whether scores should be shared, and whether to show best per player, latest per player, or every run; higher or lower wins. Use [creator database tools](creator-database.md) from the agent's private workspace to read and configure that policy. There is no required dashboard settings step. Sharing defaults off, including existing games. Enabling it reveals stored names/avatars/scores to players of this game, so explain that before changing an existing policy. It never shares inventory, arbitrary score details, account email, review notes or another game's records. The browser cannot change this policy. Legacy credentials lack database authority; download a new scoped file rather than modifying the old file.
 
 ```js
 // Generate ONCE at the end of a run; keep this ID and payload if a retry is needed.

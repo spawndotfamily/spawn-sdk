@@ -6,7 +6,7 @@ Before integrating a game, read [AGENTS.md](../AGENTS.md), [security guidance](s
 
 ## Install the SDK from npm
 
-Run `npm install --save-exact @spawndotfamily/sdk@0.2.10 --ignore-scripts` in your game folder, then read the installed package's `AGENTS.md` and `docs/creator-checklist.md`. The package contains compiled browser modules, the local testing launcher and the publishing CLI. Keep the lockfile to retain npm integrity checks. No manual SDK archive or GitHub connection is required. The public source remains available at https://github.com/spawndotfamily/spawn-sdk.
+Run `npm install --save-exact @spawndotfamily/sdk@0.2.11 --ignore-scripts` in your game folder, then read the installed package's `AGENTS.md` and `docs/creator-checklist.md`. The package contains compiled browser modules, the local testing launcher and the publishing CLI. Keep the lockfile to retain npm integrity checks. No manual SDK archive or GitHub connection is required. The public source remains available at https://github.com/spawndotfamily/spawn-sdk.
 
 Read `platformOrigin` and `projectId` privately from the creator credentials. Keep the file outside the game repository and browser output. Stop and report unsupported endpoints or contract mismatches rather than guessing an API or weakening validation.
 
@@ -29,7 +29,7 @@ SPAWN_PUBLISH_KEY=<local-secret> \
 ./node_modules/.bin/spawn-publish publish ./dist
 ```
 
-Keep the publish key out of source, browser assets, prompts, logs, command output and the build directory. The credentials file expires and may contain `platformOrigin`, optional `uploadOrigin`, `projectId`, `publishKey`, `expiresAt`, and optional `scopes`. If `uploadOrigin` is omitted, the CLI derives `https://uploads.<platform-host>` for a remote platform and `http://127.0.0.1:3401` when the local platform is on port 3003. A worker origin returned by Spawn must match that expected origin exactly. Legacy files without scopes remain accepted for build operations and listing reads. Newly issued files may explicitly include `build:read`, `build:upload`, and `listing:write`; only the server grants these permissions. HTTP is allowed only for exact local loopback origins; remote origins require HTTPS.
+Keep the publish key out of source, browser assets, prompts, logs, command output and the build directory. The credentials file expires and may contain `platformOrigin`, optional `uploadOrigin`, `projectId`, `publishKey`, `expiresAt`, and optional `scopes`. If `uploadOrigin` is omitted, the CLI derives `https://uploads.<platform-host>` for a remote platform and `http://127.0.0.1:3401` when the local platform is on port 3003. A worker origin returned by Spawn must match that expected origin exactly. Legacy files without scopes remain accepted for build operations and listing reads. Newly issued files may explicitly include `build:read`, `build:upload`, `listing:write`, `data:read`, `data:write` and `data:configure`; only the server grants these permissions. HTTP is allowed only for exact local loopback origins; remote origins require HTTPS.
 
 Remote publishing streams a manifest to the platform, sends each regular file to the isolated upload worker in 8 MiB chunks, seals the worker receipt, and completes the release on the platform with the publish key. The publish key is never sent to the worker, redirects are rejected, and a failed chunk may be retried with the same bytes. The client safety ceiling is 8,000,000,000 decoded build bytes total and per file, with 1,000 files and a 1,000,000 byte limit for every HTML file; Spawn defaults admission to 1,000,000,000 bytes and may grant an owner-controlled allowance up to that client ceiling. The CLI never creates a base64 or whole-build buffer. It includes supported regular browser assets, rejects hidden paths, `node_modules`, symlinks, source secrets and `.map` files. It prints only the release id, status, preview URL and checks. Creator approval of that exact preview is a separate Spawn action.
 
@@ -118,3 +118,7 @@ GitHub-hosted runner and artifact limits belong to the creator's GitHub plan. Pr
 ## Existing browser builds
 
 `dist` is optional. Select `.` for a repository-root index.html, `web` for web/index.html, or any supported folder containing the completed index.html and its browser assets. Keep relative asset paths. Source-only engine projects must be exported first. GitHub imports committed files on the selected branch or a completed spawn-browser-build artifact; they do not run build commands or automatically import every push. A local finished folder can be uploaded directly by the agent without GitHub.
+
+## Creator database
+
+[Database commands](creator-database.md) let a private creator agent inspect and edit its own game records and configure score sharing. They require SDK 0.2.11, a matching platform deployment, and newly scoped credentials. They do not approve releases or transfer tokens. For missing module files, opaque-frame errors and network failures, see [troubleshooting](troubleshooting.md).

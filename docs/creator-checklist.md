@@ -38,6 +38,8 @@ A browser can be modified to bypass a local unlock and cannot prove honest offli
 
 Produce a browser directory with a root `index.html`, relative asset paths and locally bundled dependencies. The current preview sandbox has no `allow-same-origin`, remote CDN scripts, threaded WebAssembly or `SharedArrayBuffer` support. Do not silently weaken these constraints. Keep credentials, source maps, backend code, environment files and development data out of the build. Respect the CLI's size, file-count and path limits; let it reject unsafe files.
 
+Bundle the SDK through the game’s bundler; never vendor only its entry file. Relative module dependencies must also ship, with exact filename casing. See [packaging diagnostics](troubleshooting.md).
+
 Run the game's meaningful tests and production build. Validate with `spawn-publish check ./dist`, then follow [local testing](testing.md) using `spawn-dev ./dist`; no real account or credentials belong in that launcher. For TEST-enabled games, test confirmed entry funding the pool, manual rewards to another fake player, empty-pool rejection and reset in its creator panel. Keep the same browser client for the private Spawn preview; never add a silent local-account fallback. Check the real Spawn iframe flow: correct account, clear pending/failure/success states, closing and reopening, save conflicts when saves are used, and optional TEST cancellation when included. For multiplayer, test latency/disconnect recovery, duplicate connections and server-side authority. Report what was tested locally versus what still requires platform configuration. Recommend a security review when available, but obtain consent before any external source upload and keep findings private. A successful scan or test suite does not guarantee the absence of cheats.
 
 ## 5. Return a private preview, then stop
@@ -49,7 +51,7 @@ Use the installed executable, not a command that silently downloads a different 
 ./node_modules/.bin/spawn-publish status <release-id> --credentials /path/to/spawn-project-<projectId>.json
 ```
 
-On Windows use `node node_modules/@spawndotfamily/sdk/dist/cli/run.js` with the same arguments. Legacy publishing keys grant upload/status for one project only. New downloaded credentials may separately grant listing:write; this does not grant publication permission. Return the private preview URL, release ID, tests and remaining limitations. The creator must play and approve that exact preview in Spawn; the agent must not submit, review, approve, list, distribute rewards or claim deployment merely because upload succeeded.
+On Windows use `node node_modules/@spawndotfamily/sdk/dist/cli/run.js` with the same arguments. Legacy publishing keys grant upload/status for one project only. New downloaded credentials may separately grant listing:write and data:read/write/configure; this does not grant publication permission. Return the private preview URL, release ID, tests and remaining limitations. The creator must play and approve that exact preview in Spawn; the agent must not submit, review, approve, list, distribute rewards or claim deployment merely because upload succeeded.
 
 ## Account-required game startup
 

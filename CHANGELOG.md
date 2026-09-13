@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.2.11 — 2026-09-13
+
+### Added
+- Private creator database CLI: read players, scores and nested saves; version-checked save edits/removal; configure score sharing after asking the creator.
+- Missing relative JavaScript module checks before streaming upload and local testing, including re-exports and literal dynamic imports.
+- Packaging and connection troubleshooting for creator agents.
+
+### Changed
+- New credentials support explicit database scopes; older credentials retain their existing authority.
+- Agent guidance bundles the full browser dependency graph and keeps database configuration out of game code.
+- CLI includes pinned es-module-lexer 3.0.2 to inspect imports without executing game code. Browser transport and payment consent remain unchanged.
+
+### Upgrade notes
+- Database tools require the matching platform deployment and a newly downloaded creator credential. Never put that file in the game build or change its scopes manually.
+- Rebuild and run check, spawn-dev and a private preview. Import checking is bounded and does not certify playability or security.
+- Network/TLS resets on affected connections remain separate; this release does not resolve them.
+
 ## 0.2.10 — 2026-09-13
 
 ### Added
