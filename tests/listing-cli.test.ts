@@ -53,3 +53,18 @@ test('text limits, empty clears and exact image byte limit follow the contract',
     await writeFile(path, JSON.stringify({ expectedVersion: 0, ...patch }));
     assert.equal(await f.execute(['listing', 'update', path]), 1);
 } assert.equal(f.calls.length, 1); const image = join(f.dir, 'large.png'); const data = Buffer.alloc(1048576); data.set([137, 80, 78, 71, 13, 10, 26, 10]); await writeFile(image, data); assert.equal(await f.execute(['image', 'add', image, '--expected-version', '0', '--alt', '']), 0); }));
+
+test('listing CLI round-trips mobile devices and rejects invalid capabilities locally', async () => fixture(async f => {
+  const path = join(f.dir, 'devices.json');
+  f.setReply(() => Response.json({ ...listing, devices: ['browser', 'mobile'] }));
+  await writeFile(path, JSON.stringify({ expectedVersion: 3, devices: ['browser', 'mobile'] }));
+  assert.equal(await f.execute(['listing', 'update', path]), 0);
+  assert.deepEqual(f.calls[0].body, { expectedVersion: 3, devices: ['browser', 'mobile'] });
+  assert.deepEqual(JSON.parse(f.logs[0]).devices, ['browser', 'mobile']);
+  const calls = f.calls.length;
+  for (const devices of [[], ['mobile'], ['native'], ['browser', 'browser'], 'browser']) {
+    await writeFile(path, JSON.stringify({ expectedVersion: 3, devices }));
+    assert.equal(await f.execute(['listing', 'update', path]), 1);
+  }
+  assert.equal(f.calls.length, calls);
+}));

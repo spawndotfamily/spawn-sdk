@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.2.13 — 2026-09-14
+
+### Added
+- Versioned listing CLI supports `devices: ["browser"]` or `["browser", "mobile"]`, including reads and validation before upload.
+- Creator guidance for testing phone controls and using Spawn's shared mascot loading screen.
+
+### Upgrade notes
+- Device metadata requires the matching platform deployment. Old listing responses without devices remain compatible.
+- Hosted loading improvements apply without rebuilding a game. No changes to identity, payment confirmation, storage permissions or iframe isolation.
+
 ## 0.2.12 — 2026-09-13
 
 ### Added

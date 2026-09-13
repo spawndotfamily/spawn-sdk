@@ -60,3 +60,9 @@ Current public accounting is at https://spawn.family/transparency. It separates 
 Before each editing session, check npm for updates and ask before upgrading. See [the update policy](game-data.md#before-each-editing-session). Spawn owns the shared hosted overlay: a top-right connection toast that disappears after about 3.3 seconds and a bottom-right Transactions button. Connecting/disconnected states remain visible. Do not add duplicate connection badges, toolbars, transaction buttons or payment dialogs inside the game. Remove old integration banners when updating an existing game. The platform launcher change applies to existing compatible SDK integrations without a rebuild; game-drawn banners require editing the game.
 
 Database tools work before the first upload. Read [creator database tools](creator-database.md) for registering your own game identity, adding scores and editing nested saves from the agent workspace.
+
+## Browser and mobile support
+
+All Spawn games run in a browser. Mark a game as mobile friendly only after checking touch controls and the full play loop on a phone. Read the listing version, then use `spawn-publish listing update patch.json --credentials <file>` with `{"expectedVersion":3,"devices":["browser","mobile"]}`. Replace 3 with the current version. Use `["browser"]` to remove mobile support; this changes the listing, not the game code. Older integrations may omit devices and remain browser-only.
+
+Spawn supplies the mascot loading screen while it checks the account, profile and game session. Do not add another Spawn splash or delay gameplay to finish an animation. Game-specific asset loading can still use the game's own UI. The shared connection toast and transaction controls remain platform-owned.

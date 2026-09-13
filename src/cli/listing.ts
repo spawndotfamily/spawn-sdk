@@ -75,7 +75,7 @@ export function parseListingCommand(argv: string[], credentialsPath?: string): L
 
 function validatePatch(value: unknown): Record<string, unknown> {
   if (!isRecord(value) || Array.isArray(value)) fail('The listing patch must be a JSON object.');
-  const allowed = new Set(['expectedVersion', ...Object.keys(FIELDS), 'modes', 'coverImageId']);
+  const allowed = new Set(['expectedVersion', ...Object.keys(FIELDS), 'modes', 'devices', 'coverImageId']);
   if (Object.keys(value).some(key => !allowed.has(key))) fail('The listing patch contains an unsupported field.');
   const patch: Record<string, unknown> = { expectedVersion: version(value.expectedVersion) };
   for (const [name, [min, max]] of Object.entries(FIELDS)) {
@@ -84,6 +84,10 @@ function validatePatch(value: unknown): Record<string, unknown> {
   if (Object.hasOwn(value, 'modes')) {
     if (!Array.isArray(value.modes) || value.modes.length > 8) fail('modes must be an array of at most 8 strings.');
     patch.modes = value.modes.map(mode => textField(mode, 'mode', 1, 40));
+  }
+  if (Object.hasOwn(value, 'devices')) {
+    if (!Array.isArray(value.devices) || value.devices.length < 1 || value.devices.length > 2 || !value.devices.includes('browser') || new Set(value.devices).size !== value.devices.length || value.devices.some(device => !['browser', 'mobile'].includes(device))) fail('devices must include browser, with optional mobile support.');
+    patch.devices = ['browser', ...(value.devices.includes('mobile') ? ['mobile'] : [])];
   }
   if (Object.hasOwn(value, 'coverImageId')) patch.coverImageId = value.coverImageId === null ? null : uuid(value.coverImageId);
   if (Object.keys(patch).length === 1) fail('The listing patch must include at least one editable field.');
@@ -105,6 +109,7 @@ async function imageData(file: string): Promise<string> {
 function publicListing(value: Record<string, unknown>): Record<string, unknown> {
   if (!Number.isSafeInteger(value.version) || Number(value.version) < 0 || !Array.isArray(value.images) || value.images.length > 8) fail('Spawn returned an invalid listing response.');
   const { expectedVersion: _, ...fields } = validatePatch({ expectedVersion: value.version,
+    ...(Object.hasOwn(value, 'devices') ? { devices: value.devices } : {}),
     ...Object.fromEntries([...Object.keys(FIELDS), 'modes', 'coverImageId'].map(key => [key, value[key]])) });
   const images = value.images.map(image => {
     if (!isRecord(image)) fail('Spawn returned an invalid listing image.');
