@@ -1,0 +1,64 @@
+name: Release SDK
+run-name: Release SDK ${{ inputs.version }}
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version already committed to package.json and CHANGELOG.md (for example 0.2.9)'
+        required: true
+        type: string
+permissions:
+  contents: read
+concurrency:
+  group: sdk-npm-release
+  cancel-in-progress: false
+jobs:
+  publish:
+    if: github.ref == 'refs/heads/main' && github.repository == 'spawndotfamily/spawn-sdk'
+    runs-on: ubuntu-latest
+    environment: npm
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '24'
+      - name: Validate release and show notes
+        env:
+          RELEASE_VERSION: ${{ inputs.version }}
+        run: |
+          node scripts/release-notes.mjs "$RELEASE_VERSION" > release-notes.md
+          cat release-notes.md >> "$GITHUB_STEP_SUMMARY"
+      - run: npm ci --ignore-scripts
+      - run: npm test
+      - run: npm run check
+      - run: npm run build
+      - run: node --test tests/dev-launcher.integration.mjs
+      - name: Publish using npm trusted publishing
+        run: npm publish --access public --ignore-scripts
+  release-notes:
+    needs: publish
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '24'
+      - name: Publish release notes after npm succeeds
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_VERSION: ${{ inputs.version }}
+        run: |
+          node scripts/release-notes.mjs "$RELEASE_VERSION" > release-notes.md
+          gh release create "v$RELEASE_VERSION" --target "$GITHUB_SHA" --title "SDK $RELEASE_VERSION" --notes-file release-notes.md
+          cat release-notes.md >> "$GITHUB_STEP_SUMMARY"

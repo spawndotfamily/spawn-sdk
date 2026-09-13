@@ -1,11 +1,23 @@
 # Changelog
 
-## 0.2.9
+## 0.2.9 — 2026-09-13
 
-- Add game-scoped leaderboard reads and private save metadata listing/deletion; keep existing calls supported.
-- Add optional score submission IDs for retry protection and local leaderboard policy controls.
-- Validate nested JSON saves; document generous hosted quotas, identity stability and untrusted browser-data boundaries.
-- Guide agents to check npm at the start of editing and ask before upgrades; no automatic dependency changes.
+### Added
+- Read your game's leaderboard inside the game, with stable game-specific player IDs and pagination.
+- List and delete the connected player's save records; store nested inventories, equipment and progress as JSON.
+- Optional score submission IDs prevent duplicate records when retrying the same run.
+- Local testing includes creator-controlled leaderboard sharing and best/latest/all score views.
+- Public release notes and a tested GitHub-to-npm release workflow without a stored npm publishing token.
+
+### Changed
+- Validate nested JSON saves and document hosted storage limits: 100 MB per game, 1 MiB per player/game and 64 KiB per record, subject to record counts and shared capacity.
+- Agent instructions check for SDK updates at the start of an editing session and ask before upgrading.
+
+### Upgrade notes
+- Existing supported identity, save, payment and score calls remain available; no forced upgrade.
+- New data methods require SDK 0.2.9 and the matching Spawn platform update. Enable leaderboard sharing in Players & rewards before exposing scores in your game.
+- Best/latest policies filter the leaderboard view; raw runs still use storage until removed. Browser scores and saves remain untrusted and do not authorize automatic rewards.
+- Install the chosen version with `npm install --save-exact --ignore-scripts @spawndotfamily/sdk@0.2.9`, test locally, then verify a private preview.
 
 ## 0.2.8 — 2026-09-13
 - Add a short creator capability menu and one-prompt handoff; separate TEST currency from release status.

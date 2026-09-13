@@ -53,3 +53,12 @@ An authorized agent can build and upload directly from a local checkout, includi
 ## Fee integration
 
 Read integration.md#platform-fees-and-creator-rewards. Distinguish the platform fee (currently approved as 5% of incoming creator-pool transfers) from creator retention. Outgoing rewards have no additional platform fee. Confirm the gross debit and show the platform/creator split in Spawn’s UI. Never treat a client-computed win or payout as ledger authority. Per-match paid multiplayer integration remains unavailable until its documented hosted contract is released.
+
+
+## SDK releases and release notes
+
+Package releases use `.github/workflows/release.yml`, dispatched on main with the exact committed package version. Ordinary pushes do not publish. Bump package.json/package-lock.json together and add one CHANGELOG.md section with Added, Changed and Upgrade notes. Link user-visible changes and clearly state hosted dependencies or migration requirements. The workflow validates notes, installs locked dependencies, tests, type-checks, builds and runs the compiled launcher integration before npm publication. GitHub Releases publishes those same notes only after npm succeeds. Release progress is visible in Actions. Website deployments remain independent; never pin a creator prompt to a version that is not installable yet.
+
+npm trusts only spawndotfamily/spawn-sdk, release.yml, environment npm. Configure that GitHub environment to permit main only. No NPM_TOKEN is needed. Keep account 2FA enabled and tightly restrict repository write/admin access, because people able to change this release workflow can publish the package. Pinned official actions and no persisted checkout credentials reduce unnecessary access. External security scans run only when Lucas explicitly requests them; normal release tests still run.
+
+To release: `gh workflow run release.yml --ref main -f version=0.2.9` (replace with the committed version). If npm succeeds but GitHub release-note creation fails, create the missing release at the successful run's exact commit using the same changelog section; do not attempt to republish an existing npm version. If a version already exists, stop and investigate its source/provenance rather than overwriting or silently skipping it.

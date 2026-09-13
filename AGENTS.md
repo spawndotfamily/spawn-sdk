@@ -23,4 +23,4 @@ For saves, use version checks and quotas. Read [game data](docs/game-data.md) fo
 
 For multiplayer, creators operate their own authoritative server. Read [multiplayer](docs/multiplayer.md) and [startup](docs/startup.md). A browser handshake, payment receipt or claimed score does not authorize payouts. Registered transport support is separate from server validation and hosted settlement availability.
 
-If you are changing this SDK itself, read [maintainer contracts](docs/maintainers.md), run tests/type checks/build and inspect package contents. Preserve existing transport restrictions. A GitHub push does not publish a new npm version or deploy Spawn.
+If you are changing this SDK itself, read [maintainer contracts](docs/maintainers.md), run tests/type checks/build and inspect package contents. Preserve existing transport restrictions. A GitHub push does not publish a new npm version or deploy Spawn. Maintainers explicitly run the tested Release SDK workflow from main; see docs/maintainers.md. Read public GitHub Releases or the installed CHANGELOG.md for changes and upgrade notes.

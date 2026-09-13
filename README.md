@@ -1,5 +1,7 @@
 # Spawn SDK
 
+[Release notes — what changed](https://github.com/spawndotfamily/spawn-sdk/releases) · [Publishing status](https://github.com/spawndotfamily/spawn-sdk/actions/workflows/release.yml)
+
 **Start here:** [Feature menu and one-prompt workflow](docs/creator-guide.md). Choose only what your game needs; a finished browser game does not need a Spawn template or GitHub connection.
 
 Published games still use non-redeemable TEST services today. `environment: 'sandbox'` describes the currency environment, not whether a game is approved or local.
