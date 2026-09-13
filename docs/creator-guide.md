@@ -23,7 +23,7 @@ These are choices, not a checklist of features to add. Preserve existing gamepla
 ## The one-prompt workflow
 
 1. **Inspect.** Identify the engine, browser export, assets and any server dependency. A native executable alone is not a web build.
-2. **Install.** Run `npm install --save-exact --ignore-scripts @spawndotfamily/sdk@0.2.7`. Read the installed AGENTS.md, docs/creator-checklist.md and only the relevant integration sections. No separate SDK archive, source checkout or GitHub connection is needed.
+2. **Install.** Run `npm install --save-exact --ignore-scripts @spawndotfamily/sdk@0.2.8`. Read the installed AGENTS.md, docs/creator-checklist.md and only the relevant integration sections. No separate SDK archive, source checkout or GitHub connection is needed.
 3. **Connect.** Use the existing browser client and launcher identity. Use the shared startup controller for account-dependent play. Keep secret creator credentials outside source and the browser build. The downloaded file expires after 24 hours; ask for its saved path, never its secret in chat.
 4. **Test.** Build into any folder, then run `npx --no-install spawn-publish check <folder>` and `npx --no-install spawn-dev <folder>`. Play a real start → gameplay → finish/retry loop. Check input, missing assets, console errors, reconnect, saves and any cancel/confirmed TEST payment. Return evidence and clearly state anything you could not test.
 5. **Upload.** Run `npx --no-install spawn-publish publish <folder> --credentials <private-file-path>`. Return the actual preview link and release ID. If it fails, preserve the build and explain the error; GitHub import or Manual upload can send the same build, but are not guaranteed to bypass network problems.

@@ -6,7 +6,7 @@ Before integrating a game, read [AGENTS.md](../AGENTS.md), [security guidance](s
 
 ## Install the SDK from npm
 
-Run `npm install --save-exact @spawndotfamily/sdk@0.2.7 --ignore-scripts` in your game folder, then read the installed package's `AGENTS.md` and `docs/creator-checklist.md`. The package contains compiled browser modules, the local testing launcher and the publishing CLI. Keep the lockfile to retain npm integrity checks. No manual SDK archive or GitHub connection is required. The public source remains available at https://github.com/spawndotfamily/spawn-sdk.
+Run `npm install --save-exact @spawndotfamily/sdk@0.2.8 --ignore-scripts` in your game folder, then read the installed package's `AGENTS.md` and `docs/creator-checklist.md`. The package contains compiled browser modules, the local testing launcher and the publishing CLI. Keep the lockfile to retain npm integrity checks. No manual SDK archive or GitHub connection is required. The public source remains available at https://github.com/spawndotfamily/spawn-sdk.
 
 Read `platformOrigin` and `projectId` privately from the creator credentials. Keep the file outside the game repository and browser output. Stop and report unsupported endpoints or contract mismatches rather than guessing an API or weakening validation.
 

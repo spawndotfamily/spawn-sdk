@@ -7,7 +7,7 @@ Published games still use non-redeemable TEST services today. `environment: 'san
 
 Integrate a browser game with Spawn without access to Spawn's private infrastructure. Creators operate their own multiplayer servers. Spawn provides an optional small, player-and-game-scoped save store; it does not provision creator servers or give creators access to its database engine, VPS or administrator services.
 
-Install the published package using `npm install --save-exact @spawndotfamily/sdk@0.2.7 --ignore-scripts`. Read `node_modules/@spawndotfamily/sdk/AGENTS.md` and `node_modules/@spawndotfamily/sdk/docs/creator-checklist.md` before integrating. Bundle browser dependencies with your game; no UI framework or runtime SDK dependency is required. The public GitHub repository remains available for source inspection.
+Install the published package using `npm install --save-exact @spawndotfamily/sdk@0.2.8 --ignore-scripts`. Read `node_modules/@spawndotfamily/sdk/AGENTS.md` and `node_modules/@spawndotfamily/sdk/docs/creator-checklist.md` before integrating. Bundle browser dependencies with your game; no UI framework or runtime SDK dependency is required. The public GitHub repository remains available for source inspection.
 
 ## Choose an integration
 
@@ -81,4 +81,4 @@ Local creator testing includes the configurable incoming platform fee and a sepa
 
 ## Migrating existing source integrations
 
-The public npm name is `@spawndotfamily/sdk` because the `@spawn` namespace is unavailable. Update imports from `@spawn/sdk` to `@spawndotfamily/sdk`, including subpaths. Alternatively, preserve existing imports with `npm install --save-exact @spawn/sdk@npm:@spawndotfamily/sdk@0.2.7 --ignore-scripts`. Both names expose the same SDK APIs and CLI commands; choose one installation approach.
+The public npm name is `@spawndotfamily/sdk` because the `@spawn` namespace is unavailable. Update imports from `@spawn/sdk` to `@spawndotfamily/sdk`, including subpaths. Alternatively, preserve existing imports with `npm install --save-exact @spawn/sdk@npm:@spawndotfamily/sdk@0.2.8 --ignore-scripts`. Both names expose the same SDK APIs and CLI commands; choose one installation approach.

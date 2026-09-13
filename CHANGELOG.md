@@ -1,9 +1,10 @@
 # Changelog
 
-## Unreleased
+## 0.2.8 — 2026-09-13
 - Add a short creator capability menu and one-prompt handoff; separate TEST currency from release status.
 - Simplify creator AGENTS.md, retain detailed maintainer contracts, remove repeated payment-flow text.
 - Clarify existing-game folders, browser play-test evidence and approval boundaries.
+- Release the existing document-bound multiplayer match-entry presentation request for explicitly enabled games. It does not authorize admission, results or payouts.
 
 ## 0.2.7
 
@@ -12,9 +13,9 @@
 - npm installation does not change the upload API, its authentication, or fix network/TLS failures reaching Spawn.
 
 
-## Unreleased
+### Earlier 0.2.7 development changes
 
-- Make public GitHub source the default creator installation path; keep direct private-preview upload independent of GitHub connection.
+- Keep direct private-preview upload independent of GitHub connection; source inspection remains optional after npm became the default installation path.
 - Add validated local rebuild/rescan and launcher-only diagnostic state for agent verification.
 
 - Model configurable incoming platform fees in the isolated TEST launcher, with separate creator and platform balances and fee-free outgoing rewards.
