@@ -8,7 +8,7 @@ First read [the feature menu](creator-guide.md) and suggest only relevant featur
 
 Inspect the existing engine, build scripts, dependencies, asset paths, rendering, input and server architecture. Reuse the existing browser export. If a native game requires a substantial port or unsupported features, explain the cost and obtain the creator's decision before starting that port. Keep game rules, rendering, platform integration and server authority separate.
 
-Install the published SDK in the game folder with `npm install --save-exact @spawndotfamily/sdk@0.2.9 --ignore-scripts`, then read the installed `AGENTS.md` and this checklist. Keep the lockfile for registry integrity and reproducible installation. Compiled modules, local testing tools and the publishing CLI are included; no separate SDK build or manual archive download is required. Do not place credentials in the package directory or game build.
+Install the published SDK in the game folder with `npm install --save-exact @spawndotfamily/sdk@0.2.10 --ignore-scripts`, then read the installed `AGENTS.md` and this checklist. Keep the lockfile for registry integrity and reproducible installation. Compiled modules, local testing tools and the publishing CLI are included; no separate SDK build or manual archive download is required. Do not place credentials in the package directory or game build.
 
 The source remains available at https://github.com/spawndotfamily/spawn-sdk for inspection. A GitHub account connection or game repository is not required. Bundle imported browser modules normally. Record the installed package version in the test report.
 

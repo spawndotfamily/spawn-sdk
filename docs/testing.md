@@ -90,3 +90,7 @@ Agents may read `window.__SPAWN_DEV_STATE__` **on the launcher page**. Browser t
 For a clean regression: open the game, verify connected identity, submit a score and inspect `lastScore`; test payment cancellation and confirmation if used; rebuild, click Rebuild / reload and repeat. Upload only after these checks pass, then return the private preview for human approval.
 
 The creator test panel also controls leaderboard sharing, best/latest/every-run policy and score order. Test Alice/Bob, duplicate submission IDs, nested inventory saves, version conflicts and intentional removal. See [game data](game-data.md). These methods need SDK 0.2.9.
+
+## Hosted overlay acceptance
+
+After upload, open the private preview from Spawn: verify the connection toast appears at top-right, disappears after about 3.3 seconds, and Transactions stays at bottom-right. Verify reconnect notifications and payment confirmation still work. The launcher owns this UI; local test panels do not dictate the published layout. Remove any old game-drawn Spawn badge/toolbar rather than layering another over it. Do not remove your game controls or useful player-name display.

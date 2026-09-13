@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.2.10 — 2026-09-13
+
+### Changed
+- Agent instructions define one consistent hosted overlay: a brief top-right connection toast and bottom-right Transactions button, supplied by Spawn.
+- Existing-game guidance removes duplicate Spawn badges/toolbars and distinguishes local developer panels from published UI.
+
+### Upgrade notes
+- Documentation-only release; transport, identity, payment, storage and publishing APIs are unchanged.
+- Spawn’s launcher fix applies to existing integrations without reinstalling. Upgrade the agent guide to 0.2.10 when editing a game, and remove any Spawn banner drawn by the game itself.
+- Verify the hosted preview after updating; the package alone does not deploy the platform launcher.
+
 ## 0.2.9 — 2026-09-13
 
 ### Added
