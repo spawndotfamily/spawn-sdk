@@ -4,7 +4,9 @@
 
 ### Added
 - Versioned listing CLI supports `devices: ["browser"]` or `["browser", "mobile"]`, including reads and validation before upload.
-- Creator guidance for testing phone controls and using Spawn's shared mascot loading screen.
+
+### Changed
+- Creator guidance explains testing phone controls and using Spawn's shared mascot loading screen.
 
 ### Upgrade notes
 - Device metadata requires the matching platform deployment. Old listing responses without devices remain compatible.
