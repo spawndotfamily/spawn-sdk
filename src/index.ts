@@ -1,3 +1,5 @@
+import { leaderboardQuery, jsonSave, type LeaderboardQuery, type LeaderboardPage, type SaveIndex } from './game-data.ts';
+export type { LeaderboardQuery, LeaderboardPage, LeaderboardEntry, LeaderboardPolicy, SaveIndex } from './game-data.ts';
 export type Save<T> = { value: T; version: number; updatedAt: string };
 /** @deprecated Reviewed first-party same-origin prototype. Creators should use createSpawnGameClient in isolated previews. Never forward its cookies to another origin. */
 export function createSpawnClient(gameId: string) {
@@ -58,9 +60,12 @@ export type SpawnTestPayment = {
 
 export type SpawnGameClient = {
   identity(): Promise<SpawnGameIdentity>;
+  getLeaderboard(query?: LeaderboardQuery): Promise<LeaderboardPage>;
+  listSaves(): Promise<SaveIndex>;
+  remove(key: string, expectedVersion: number): Promise<{ deleted: true }>;
   load<T>(keyOrRequest: string | { key: string }): Promise<Save<T> | null>;
   save<T>(keyOrRequest: string | { key: string; value: T; expectedVersion: number }, value?: T, expectedVersion?: number): Promise<Save<T>>;
-  submitScore(scoreOrRequest: number | { score: number; details?: Record<string, unknown> }, details?: Record<string, unknown>): Promise<SpawnScoreSubmission>;
+  submitScore(scoreOrRequest: number | { score: number; details?: Record<string, unknown>; submissionId?: string }, details?: Record<string, unknown>): Promise<SpawnScoreSubmission>;
   requestPayment(productOrRequest: 'entry' | { productId: 'entry' }): Promise<SpawnTestPayment>;
   dispose(): void;
 };
@@ -437,21 +442,35 @@ export function createSpawnGameClient(options: { platformOrigin?: string } = {})
       if (typeof actualVersion !== 'number' || !Number.isInteger(actualVersion) || actualVersion < 0) {
         return Promise.reject(new Error('Invalid save version.'));
       }
-      return request<Save<T>>('save', { key, value: actualValue, expectedVersion: actualVersion }, GAME_BRIDGE_TIMEOUT_MS);
+      try {
+        if (key.startsWith('_spawn_')) throw new Error('Reserved platform record.');
+        return request<Save<T>>('save', { key, value: jsonSave(actualValue), expectedVersion: actualVersion }, GAME_BRIDGE_TIMEOUT_MS);
+      } catch (error) { return Promise.reject(error); }
     },
-    submitScore: (scoreOrRequest: number | { score: number; details?: Record<string, unknown> }, details?: Record<string, unknown>) => {
-      const requestObject = isObject(scoreOrRequest) && exactObjectKeys(scoreOrRequest, ['score'], ['details'])
-        ? scoreOrRequest as { score: number; details?: Record<string, unknown> }
+    getLeaderboard: (query?: LeaderboardQuery) => {
+      try { return request<LeaderboardPage>('getLeaderboard', leaderboardQuery(query), GAME_BRIDGE_TIMEOUT_MS); }
+      catch (error) { return Promise.reject(error); }
+    },
+    listSaves: () => request<SaveIndex>('listSaves', {}, GAME_BRIDGE_TIMEOUT_MS),
+    remove: (key: string, expectedVersion: number) => {
+      if (!validSaveKey(key) || key.startsWith('_spawn_') || !Number.isSafeInteger(expectedVersion) || expectedVersion < 1) return Promise.reject(new Error('Provide a valid save key and current version.'));
+      return request<{ deleted: true }>('remove', { key, expectedVersion }, GAME_BRIDGE_TIMEOUT_MS);
+    },
+    submitScore: (scoreOrRequest: number | { score: number; details?: Record<string, unknown>; submissionId?: string }, details?: Record<string, unknown>) => {
+      const requestObject = isObject(scoreOrRequest) && exactObjectKeys(scoreOrRequest, ['score'], ['details', 'submissionId'])
+        ? scoreOrRequest as { score: number; details?: Record<string, unknown>; submissionId?: string }
         : undefined;
       const score = typeof scoreOrRequest === 'number' ? scoreOrRequest : requestObject?.score;
       const actualDetails = typeof scoreOrRequest === 'number' ? details : requestObject?.details;
-      if (typeof score !== 'number' || !Number.isFinite(score)) {
-        return Promise.reject(new Error('Score must be a finite number.'));
+      if (typeof score !== 'number' || !Number.isSafeInteger(score) || score < 0 || score > 1_000_000_000) {
+        return Promise.reject(new Error('Score must be a nonnegative integer up to 1,000,000,000.'));
       }
       if (actualDetails !== undefined && (!isObject(actualDetails) || Array.isArray(actualDetails))) {
         return Promise.reject(new Error('Score details must be an object.'));
       }
-      const payload = actualDetails === undefined ? { score } : { score, details: actualDetails };
+      const submissionId = requestObject?.submissionId;
+      if (submissionId !== undefined && !/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/.test(submissionId)) return Promise.reject(new Error('submissionId must be a UUID.'));
+      const payload = { score, ...(actualDetails === undefined ? {} : { details: actualDetails }), ...(submissionId === undefined ? {} : { submissionId }) };
       return request<SpawnScoreSubmission>('submitScore', payload, GAME_BRIDGE_TIMEOUT_MS);
     },
     requestPayment: (productOrRequest: 'entry' | { productId: 'entry' }) => {

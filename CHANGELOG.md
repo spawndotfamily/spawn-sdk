@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.9
+
+- Add game-scoped leaderboard reads and private save metadata listing/deletion; keep existing calls supported.
+- Add optional score submission IDs for retry protection and local leaderboard policy controls.
+- Validate nested JSON saves; document generous hosted quotas, identity stability and untrusted browser-data boundaries.
+- Guide agents to check npm at the start of editing and ask before upgrades; no automatic dependency changes.
+
 ## 0.2.8 — 2026-09-13
 - Add a short creator capability menu and one-prompt handoff; separate TEST currency from release status.
 - Simplify creator AGENTS.md, retain detailed maintainer contracts, remove repeated payment-flow text.

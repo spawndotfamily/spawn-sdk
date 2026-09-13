@@ -9,6 +9,10 @@ export function createCreatorPanel(getState: () => LocalTestState, getPlayer: ()
   const feedback = element('transfer-feedback');
   function refresh() {
     const state = getState(), player = getPlayer();
+    element('leaderboard-enabled').textContent = state.leaderboard.enabled ? 'Sharing on' : 'Sharing off';
+    element('leaderboard-enabled').setAttribute('aria-pressed', String(state.leaderboard.enabled));
+    element('leaderboard-direction').textContent = state.leaderboard.direction === 'higher' ? 'Higher wins' : 'Lower wins';
+    for (const button of Array.from(document.querySelectorAll<HTMLButtonElement>('[data-leaderboard-mode]'))) button.setAttribute('aria-pressed', String(button.dataset.leaderboardMode === state.leaderboard.mode));
     element('balance').textContent = `${names[player]} · ${state.balance(player)} TEST`;
     element('platform-balance').textContent = `${state.economy.balance('platform')} TEST`;
     element('pool-balance').textContent = `${state.economy.balance('pool')} TEST`;
@@ -43,6 +47,12 @@ export function createCreatorPanel(getState: () => LocalTestState, getPlayer: ()
       feedback.dataset.error = 'true';
     }
   }
+  element('leaderboard-enabled').onclick = () => { getState().leaderboard.enabled = !getState().leaderboard.enabled; refresh(); };
+  element('leaderboard-direction').onclick = () => { getState().leaderboard.direction = getState().leaderboard.direction === 'higher' ? 'lower' : 'higher'; refresh(); };
+  for (const button of Array.from(document.querySelectorAll<HTMLButtonElement>('[data-leaderboard-mode]'))) button.onclick = () => {
+    const mode = button.dataset.leaderboardMode;
+    if (mode === 'best' || mode === 'latest' || mode === 'all') { getState().leaderboard.mode = mode; refresh(); }
+  };
   element('fund-pool').onclick = () => transfer('fund');
   element('withdraw-pool').onclick = () => transfer('withdraw');
   element('reward-player').onclick = () => transfer('reward');

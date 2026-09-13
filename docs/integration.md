@@ -71,3 +71,7 @@ The local launcher now models this split and shows a separate Spawn fee balance.
 ### TEST payment receipt
 
 `requestPayment({ productId: 'entry' })` resolves after the Spawn confirmation/Continue flow with `{ id: string, intentId: string, amount: 10, asset: 'TEST', environment: 'sandbox', status: 'paid' }`. Amounts are token units. Cancellation or failure rejects the request; do not unlock participation on rejection or infer success from an overlay. The receipt is not an authorization credential for server payouts.
+
+## Player data in SDK 0.2.9
+
+See [player data and leaderboards](game-data.md) for nested JSON, listSaves/remove, getLeaderboard, creator opt-in, quotas and submission retry IDs. The platform supplies a compact top-right connection and transaction overlay; no full-width header is required in your game.

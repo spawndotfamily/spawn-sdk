@@ -36,6 +36,7 @@ export async function startLocalLauncher(directory: string, port = 4174) {
   for (const name of ['host', 'state', 'economy', 'panel']) {
     modules.set('/__spawn/' + name + '.js', await readFile(new URL('./' + name + '.js', import.meta.url), 'utf8') as string);
   }
+  modules.set('/game-data.js', await readFile(new URL('../game-data.js', import.meta.url), 'utf8') as string);
   let origin = '';
   let rescanning = false;
   const handleRequest = async (request: Request, response: Response): Promise<void> => {

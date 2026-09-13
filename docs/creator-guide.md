@@ -8,8 +8,8 @@ One prompt can prepare, test and upload a **private preview**. You approve the p
 | --- | --- | --- |
 | Browser hosting | Finished HTML, JavaScript, WebAssembly and assets | Keep the engine and folder layout. Select the folder with index.html at its root. |
 | Player identity | Game-scoped ID, name and avatar | Use createSpawnGameClient().identity(); never copy account cookies or expose email. |
-| Small saves | Per-player JSON with version checks and quotas | Use load/save at checkpoints; handle conflicts and full storage. |
-| Scores | Unverified score submissions; creator review | Use submitScore. A browser score is not proof of fair play. |
+| Player saves | Nested JSON inventories, progress and settings; version checks | Use load/save/listSaves/remove. Read [game data](game-data.md) for limits and conflict handling. |
+| Leaderboards | Opt-in game-scoped reads; best/latest/every-run views | Use submitScore with a retry ID and getLeaderboard. Creator enables sharing in the workspace. Scores remain unverified. |
 | Optional TEST entry | Fixed 10 TEST request with Spawn confirmation | Use requestPayment('entry'); handle cancel, failure and uncertain outcomes. Never charge on startup. |
 | Creator pools | Dashboard top-ups, withdrawals and manual rewards | Current incoming platform fee is 5%; outgoing rewards have no extra platform fee. Pool balance is not a guaranteed prize. No general browser payout API. |
 | Listing and images | Name, description, supported details and image edits for this game | Use scoped CLI listing/image commands and expectedVersion. No ownership, approval or price changes. |
@@ -23,7 +23,7 @@ These are choices, not a checklist of features to add. Preserve existing gamepla
 ## The one-prompt workflow
 
 1. **Inspect.** Identify the engine, browser export, assets and any server dependency. A native executable alone is not a web build.
-2. **Install.** Run `npm install --save-exact --ignore-scripts @spawndotfamily/sdk@0.2.8`. Read the installed AGENTS.md, docs/creator-checklist.md and only the relevant integration sections. No separate SDK archive, source checkout or GitHub connection is needed.
+2. **Install.** Run `npm install --save-exact --ignore-scripts @spawndotfamily/sdk@0.2.9`. Read the installed AGENTS.md, docs/creator-checklist.md and only the relevant integration sections. No separate SDK archive, source checkout or GitHub connection is needed.
 3. **Connect.** Use the existing browser client and launcher identity. Use the shared startup controller for account-dependent play. Keep secret creator credentials outside source and the browser build. The downloaded file expires after 24 hours; ask for its saved path, never its secret in chat.
 4. **Test.** Build into any folder, then run `npx --no-install spawn-publish check <folder>` and `npx --no-install spawn-dev <folder>`. Play a real start → gameplay → finish/retry loop. Check input, missing assets, console errors, reconnect, saves and any cancel/confirmed TEST payment. Return evidence and clearly state anything you could not test.
 5. **Upload.** Run `npx --no-install spawn-publish publish <folder> --credentials <private-file-path>`. Return the actual preview link and release ID. If it fails, preserve the build and explain the error; GitHub import or Manual upload can send the same build, but are not guaranteed to bypass network problems.
@@ -55,3 +55,5 @@ Before automatic browser-score rewards, tell the creator: “Players can fake wi
 Spawn owns payment confirmation outside the game. A successful entry receipt is `{ id, intentId, amount: 10, asset: 'TEST', environment: 'sandbox', status: 'paid' }`. Cancellation rejects the request. Do not duplicate a charge after an uncertain response or treat a local flag as payment proof.
 
 Current public accounting is at https://spawn.family/transparency. It separates aggregate TEST accounting from unavailable real reserves. Matching totals are useful checks, not proof that every transaction is authorized. Read the installed security documentation; never invent missing methods or weaken the iframe, origin, credential or approval boundaries to make an integration pass.
+
+Before each editing session, check npm for updates and ask before upgrading. See [the update policy](game-data.md#before-each-editing-session). Spawn owns a compact connection/transactions overlay; do not add a duplicate full-width Spawn toolbar to the game.

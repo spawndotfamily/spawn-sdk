@@ -482,3 +482,32 @@ await test('injected public origin supports identical local and published startu
     environment.restore();
   }
 });
+
+await test('game data bridge scopes reads and preserves explicit score retry IDs without accepting owner settings', async () => {
+  const surface = installEmbeddedWindow();
+  const client = sdk.createSpawnGameClient({ platformOrigin: PLATFORM_ORIGIN });
+  try {
+    const port = makePort();
+    surface.emit({ source: surface.parent, origin: PLATFORM_ORIGIN, data: { type: 'spawn:connected', version: 1 }, ports: [port] });
+    const board = client.getLeaderboard({ limit: 5 });
+    assert.equal(port.calls.at(-1)?.method, 'getLeaderboard');
+    assert.deepEqual(port.calls.at(-1)?.payload, { limit: 5, offset: 0 });
+    port.emit(responseFor(port.calls.at(-1)!, { items: [], mode: 'best', direction: 'higher', nextOffset: null }));
+    assert.deepEqual((await board).items, []);
+    await assert.rejects(client.getLeaderboard({ limit: 51 }));
+    await assert.rejects(client.getLeaderboard({ projectId: 'other' } as never));
+    await assert.rejects(client.remove('_spawn_score_private', 1));
+    await assert.rejects(client.save('data', { undefinedField: undefined }, 0));
+    await assert.rejects(client.save('data', { notFinite: Infinity }, 0));
+    const listing = client.listSaves();
+    assert.equal(port.calls.at(-1)?.method, 'listSaves');
+    port.emit(responseFor(port.calls.at(-1)!, { items: [] })); await listing;
+    const removal = client.remove('inventory', 3);
+    assert.deepEqual(port.calls.at(-1)?.payload, { key: 'inventory', expectedVersion: 3 });
+    port.emit(responseFor(port.calls.at(-1)!, { deleted: true })); await removal;
+    const submissionId = crypto.randomUUID();
+    const score = client.submitScore({ score: 12, submissionId });
+    assert.deepEqual(port.calls.at(-1)?.payload, { score: 12, submissionId });
+    port.emit(responseFor(port.calls.at(-1)!, { id: 'score', verification: 'unverified' })); await score;
+  } finally { client.dispose(); surface.restore(); }
+});

@@ -10,6 +10,9 @@ test('rebuild validates new files, rotates document and rejects foreign rescan',
  const {server,origin}=await startLocalLauncher(dir,0);
  try {
   const html=await (await fetch(origin)).text();
+  for (const path of ['/__spawn/host.js','/__spawn/state.js','/__spawn/panel.js','/__spawn/economy.js','/game-data.js']) {
+   const module=await fetch(origin+path); assert.equal(module.status,200,path); assert.match(module.headers.get('content-type'),/javascript/);
+  }
   const old=html.match(/data-document-token="([^"]+)"/)[1];
   assert.equal((await fetch(`${origin}/build/${old}/index.html`)).status,200);
   await writeFile(join(dir,'index.html'),'<!doctype html><html><body><p>new build content</p></body></html>');

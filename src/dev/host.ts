@@ -78,12 +78,15 @@ function openGame() {
     pending.add(data.id);
     try {
       const payload = data.payload ?? {};
-      if (!payload || typeof payload !== 'object' || Array.isArray(payload) || JSON.stringify(payload).length > 16000) throw new Error('Invalid request payload.');
+      if (!payload || typeof payload !== 'object' || Array.isArray(payload) || new TextEncoder().encode(JSON.stringify(payload)).byteLength > (data.method === 'save' ? 80_000 : 16000)) throw new Error('Invalid request payload.');
       let value: unknown;
       if (data.method === 'identity') { value = state.identity(identity); status.textContent = `Connected as ${state.identity(identity).displayName}`; }
       else if (data.method === 'load') value = state.load(identity, String(payload.key));
+      else if (data.method === 'listSaves') value = state.listSaves(identity);
+      else if (data.method === 'remove') value = state.remove(identity, String(payload.key), payload.expectedVersion as number);
+      else if (data.method === 'getLeaderboard') value = state.getLeaderboard(payload);
       else if (data.method === 'save') value = state.save(identity, String(payload.key), payload.value, payload.expectedVersion as number);
-      else if (data.method === 'submitScore') { value = state.score(identity, payload.score as number, payload.details); refresh(); }
+      else if (data.method === 'submitScore') { value = state.score(identity, payload.score as number, payload.details, payload.submissionId as string | undefined); refresh(); }
       else if (data.method === 'requestPayment') value = await requestPayment(launch, String(payload.productId));
       else throw new Error('Unsupported Spawn operation.');
       send(true, value);

@@ -35,3 +35,36 @@ test('scores never pay rewards and local records have explicit non-production ID
   assert.match(result.id, /^local_/);
   assert.equal(state.balance('alice'), 100);
 });
+
+test('local nested saves follow hosted limits and support metadata listing and versioned removal', () => {
+  const state = new LocalTestState();
+  const value = { inventory: { slots: [[{ id: 'sword', count: 2 }]] }, equipment: [null, 'hat'], xp: 12.5, active: true };
+  state.save('alice', 'inventory', value, 0);
+  assert.deepEqual(state.load('alice', 'inventory')?.value, value);
+  assert.deepEqual(state.listSaves('bob').items, []);
+  assert.equal(state.listSaves('alice').items[0].key, 'inventory');
+  assert.throws(() => state.save('alice', '_spawn_score_fake', {}, 0), /key/);
+  assert.throws(() => state.save('alice', 'large', 'x'.repeat(65536), 0), /limit/);
+  assert.throws(() => state.remove('alice', 'inventory', 2), /changed/);
+  state.remove('alice', 'inventory', 1);
+  assert.equal(state.load('alice', 'inventory'), null);
+});
+
+test('local leaderboards require operator opt-in, apply one-player policy and retry IDs', () => {
+  const state = new LocalTestState();
+  assert.throws(() => state.getLeaderboard(), /enabled/);
+  state.leaderboard = { enabled: true, mode: 'best', direction: 'higher' };
+  const id = crypto.randomUUID();
+  const a = state.score('alice', 20, { secret: 'do not share' }, id);
+  assert.deepEqual(state.score('alice', 20, { secret: 'do not share' }, id), a);
+  assert.throws(() => state.score('alice', 21, {}, id), /already/);
+  state.score('alice', 10, {});
+  state.score('bob', 15, {});
+  assert.deepEqual(state.getLeaderboard().items.map(row => row.score), [20, 15]);
+  assert.equal(JSON.stringify(state.getLeaderboard()).includes('secret'), false);
+  state.leaderboard.mode = 'latest';
+  assert.deepEqual(state.getLeaderboard().items.map(row => row.score), [15, 10]);
+  state.leaderboard.mode = 'all';
+  assert.equal(state.getLeaderboard({ limit: 1 }).nextOffset, 1);
+  assert.throws(() => state.getLeaderboard({ limit: 51 }), /limit/);
+});
