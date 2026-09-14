@@ -4,6 +4,8 @@ import { createPublicKey, verify as verifySignature } from 'node:crypto';
 import { Buffer } from 'node:buffer';
 /** Only public verification material belongs here. Never supply a signing/private key. */
 export type SpawnLaunchVerificationOptions = {
+    /** Opt in only after enforcing free-only guest queues and excluding guest rewards/results. */
+    allowGuests?: boolean;
     publicKeys: Record<string, string>;
     issuer: string;
     audience: string;
@@ -15,6 +17,7 @@ export type SpawnLaunchVerificationOptions = {
     maxConsumedGrants?: number;
 };
 export type SpawnVerifiedLaunch = {
+    isGuest?: boolean;
     playerId: string;
     displayName: string;
     handle: string;
@@ -75,7 +78,7 @@ export function createSpawnLaunchVerifier(options: SpawnLaunchVerificationOption
     const minimumIssuedAt = input.minimumIssuedAt ?? Math.ceil(startedAt / 1000), maxLifetime = input.maxLifetimeSeconds ?? 120, maxConsumed = input.maxConsumedGrants ?? 32768;
     const keys = publicKeys(input.publicKeys);
     const configured = !!keys && ['issuer', 'audience', 'gameId', 'environment'].every(name => label(input[name], 256)) &&
-        (input.now === undefined || typeof input.now === 'function') && Number.isFinite(startedAt) &&
+        (input.allowGuests === undefined || typeof input.allowGuests === 'boolean') && (input.now === undefined || typeof input.now === 'function') && Number.isFinite(startedAt) &&
         typeof minimumIssuedAt === 'number' && Number.isSafeInteger(minimumIssuedAt) && minimumIssuedAt >= 0 &&
         typeof maxLifetime === 'number' && Number.isSafeInteger(maxLifetime) && maxLifetime > 0 && maxLifetime <= 120 &&
         typeof maxConsumed === 'number' && Number.isSafeInteger(maxConsumed) && maxConsumed >= 1 && maxConsumed <= 32768;
@@ -101,12 +104,14 @@ export function createSpawnLaunchVerifier(options: SpawnLaunchVerificationOption
                     throw new Error(INVALID);
             if (!label(claims.sub, 128) || !label(claims.sid, 128) || !label(claims.jti, 128) || !label(claims.handle, 64) || !label(claims.displayName, 64))
                 throw new Error(INVALID);
-            if (!Array.isArray(claims.scope) || claims.scope.length !== 1 || claims.scope[0] !== 'multiplayer:join' || ['clientId', 'clientID', 'client_id'].some(name => Object.hasOwn(claims, name)))
+            const guest = claims.isGuest === true;
+            if ((claims.isGuest !== undefined && typeof claims.isGuest !== 'boolean') || guest && (input.allowGuests !== true || !/^guest_[a-f0-9]{64}$/.test(claims.sub)) || !guest && claims.sub.startsWith('guest_')) throw new Error(INVALID);
+            if (!Array.isArray(claims.scope) || claims.scope.length !== 1 || claims.scope[0] !== (guest ? 'multiplayer:join:free' : 'multiplayer:join') || ['clientId', 'clientID', 'client_id'].some(name => Object.hasOwn(claims, name)))
                 throw new Error(INVALID);
             const { iat, nbf, exp } = claims, current = now() / 1000;
             if (!Number.isFinite(current) || typeof iat !== 'number' || typeof nbf !== 'number' || typeof exp !== 'number' || ![iat, nbf, exp].every(Number.isSafeInteger) || exp <= current || iat > current || iat < (minimumIssuedAt as number) || nbf > current + 5 || nbf > exp || exp <= iat || exp - iat > (maxLifetime as number))
                 throw new Error(INVALID);
-            return { playerId: claims.sub, sessionId: claims.sid, grantId: claims.jti, handle: claims.handle, displayName: claims.displayName, environment: input.environment as string, expiresAt: exp * 1000 };
+            return { ...(guest ? {isGuest:true} : {}), playerId: claims.sub, sessionId: claims.sid, grantId: claims.jti, handle: claims.handle, displayName: claims.displayName, environment: input.environment as string, expiresAt: exp * 1000 };
         }
         catch {
             throw new Error(INVALID);

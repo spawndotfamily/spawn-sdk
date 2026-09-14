@@ -5,6 +5,7 @@ type LocalScore = SpawnScoreSubmission & { player: Player; score: number; detail
 export type LocalQuote = { id: string; player: Player; launch: string; status: 'pending' | 'paid' | 'cancelled'; receipt?: SpawnTestPayment };
 /** In-memory fixtures only. This module never calls a platform API. */
 export class LocalTestState {
+  private readonly guestId = 'guest_' + crypto.randomUUID().replaceAll('-', '') + crypto.randomUUID().replaceAll('-', '');
   readonly economy = new LocalTestEconomy();
   leaderboard: LeaderboardPolicy = { enabled: false, mode: 'best', direction: 'higher' };
   private scoreTimes = new Map<string, string>();
@@ -13,11 +14,13 @@ export class LocalTestState {
   private saves = new Map<string, Save<unknown>>();
   private quotes = new Map<string, LocalQuote>();
   identity(player: string): SpawnGameIdentity {
+    if (player === 'guest') return {id:this.guestId,handle:'Guest_'+this.guestId.slice(-8),displayName:'Guest (local test)',avatarUrl:null,environment:'sandbox',isGuest:true,capabilities:{play:true,submitScores:false,cloudSaves:false,payments:false,rewards:false}};
     this.player(player);
     return { id: 'local_test_' + player, handle: 'test_' + player,
       displayName: (player === 'alice' ? 'Alice' : player === 'bob' ? 'Bob' : 'Empty balance') + ' (local test)', avatarUrl: null, environment: 'sandbox' };
   }
   private player(value: string): asserts value is Player {
+    if(value === 'guest') throw new Error('Sign in to use scores, cloud saves or payments.');
     localPlayer(value);
   }
   private recordKey(player: string, key: string) {
@@ -25,7 +28,7 @@ export class LocalTestState {
     if (!/^[a-zA-Z0-9_-]{1,64}$/.test(key) || key.startsWith('_spawn_')) throw new Error('Invalid record key.');
     return player + ':' + key;
   }
-  balance(player: string) { this.player(player); return this.economy.balance(player); }
+  balance(player: string) { if(player === 'guest') return 0; this.player(player); return this.economy.balance(player); }
   load(player: string, key: string) { return structuredClone(this.saves.get(this.recordKey(player, key)) ?? null); }
   save(player: string, key: string, value: unknown, version: number): Save<unknown> {
     const id = this.recordKey(player, key);

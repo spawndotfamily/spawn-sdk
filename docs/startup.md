@@ -1,6 +1,6 @@
-# Account-required startup
+# Shared game startup
 
-Use `@spawndotfamily/sdk/startup` to keep gameplay blocked until account connection succeeds. It has no DOM, networking, engine, framework or private infrastructure dependency. It coordinates one bounded connection attempt, coalesces Retry, clears stale identity on disconnect and rejects late results after cancellation. Default timeout is 60 seconds; maximum is 120 seconds.
+Use `@spawndotfamily/sdk/startup` to keep gameplay blocked until a trusted guest or account connection succeeds. It has no DOM, networking, engine, framework or private infrastructure dependency. It coordinates one bounded connection attempt, coalesces Retry, clears stale identity on disconnect and rejects late results after cancellation. Default timeout is 60 seconds; maximum is 120 seconds.
 
 ## Browser previews
 
@@ -33,3 +33,5 @@ A completed parent handshake or an issued grant is not game-server admission. Th
 Report the real connection lifecycle with `multiplayer.reportConnection('connecting' | 'ready' | 'disconnected')`. Use ready only after verified server admission; report disconnected as soon as that connection is lost. This optional parent notification sends no profile, ticket, account cookie or other data. It returns false before handshake confirmation, after disposal, for invalid values or duplicate states. Parent support is needed to display it; older parents may ignore it. It is presentation only and never permission to join, spend, score or receive rewards.
 
 For local development, use an explicit isolated test launcher and its server-verified development identity. Never enable anonymous fallback automatically after real Spawn connection failure, never grant production access with a client flag, and never label an offline/test identity as a live Spawn account.
+
+Published free games support server-issued guest identities. Read [guest play](guests.md) for IDs, permissions, sign-in and multiplayer restrictions. A guest is a successful restricted connection, not a failure fallback.

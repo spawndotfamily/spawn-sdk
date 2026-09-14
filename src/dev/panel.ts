@@ -1,7 +1,7 @@
 import type { LocalTestState } from './state.ts';
 
 const element = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
-const names: Record<string, string> = { alice: 'Alice', bob: 'Bob', empty: 'Empty balance', creator: 'Creator wallet', pool: 'Game pool', platform: 'Spawn platform' };
+const names: Record<string, string> = { guest: 'Guest', alice: 'Alice', bob: 'Bob', empty: 'Empty balance', creator: 'Creator wallet', pool: 'Game pool', platform: 'Spawn platform' };
 
 /** Operator controls belong to the launcher, not to the untrusted game frame. */
 export function createCreatorPanel(getState: () => LocalTestState, getPlayer: () => string, onRefresh: () => void = () => {}) {
@@ -17,6 +17,7 @@ export function createCreatorPanel(getState: () => LocalTestState, getPlayer: ()
     element('platform-balance').textContent = `${state.economy.balance('platform')} TEST`;
     element('pool-balance').textContent = `${state.economy.balance('pool')} TEST`;
     element('creator-balance').textContent = `${state.economy.balance('creator')} TEST`;
+    element<HTMLButtonElement>('reward-player').disabled = player === 'guest';
     element('reward-player').textContent = `Reward ${names[player]}`;
     const history = element('history'); history.replaceChildren();
     for (const item of state.economy.history.slice(0, 12)) {

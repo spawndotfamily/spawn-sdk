@@ -53,9 +53,9 @@ Use the installed executable, not a command that silently downloads a different 
 
 On Windows use `node node_modules/@spawndotfamily/sdk/dist/cli/run.js` with the same arguments. Legacy publishing keys grant upload/status for one project only. New downloaded credentials may separately grant listing:write and data:read/write/configure; this does not grant publication permission. Return the private preview URL, release ID, tests and remaining limitations. The creator must play and approve that exact preview in Spawn; the agent must not submit, review, approve, list, distribute rewards or claim deployment merely because upload succeeded.
 
-## Account-required game startup
+## Shared game startup
 
-Follow [the startup integration](startup.md) before enabling any play mode. Use the shared `@spawndotfamily/sdk/startup` controller, wait for trusted identity (and verified server admission for multiplayer), gate practice/bots too, and pause on connection loss. A handshake or grant alone is not multiplayer readiness. No automatic anonymous fallback. Keep an explicit isolated development launcher separate.
+Follow [the startup integration](startup.md) before enabling any play mode. Use the shared `@spawndotfamily/sdk/startup` controller, wait for trusted guest or account identity (and verified server admission for multiplayer), gate practice/bots too, and pause on connection loss. A handshake or grant alone is not multiplayer readiness. Published free games accept server-issued guests; account features require sign-in. Follow [guest play](guests.md). No automatic anonymous fallback after connection failure. Keep an explicit isolated development launcher separate.
 
 ## Edit owned game details or images
 

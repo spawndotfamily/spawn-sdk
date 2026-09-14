@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.2.14 — 2026-09-14
+
+### Added
+- Guest identities with unique game-scoped IDs and explicit free-play capabilities.
+- Guest mode in the local launcher, including denied score, save and payment tests.
+- Explicit server-verifier opt-in for signed free-only multiplayer guest grants.
+- A concise guest integration guide for creators and their agents.
+
+### Changed
+- Human-facing README and shared startup guidance distinguish guest play from account features.
+- Identity version negotiation keeps older launcher and SDK integrations compatible.
+
+### Upgrade notes
+- Hosted guest play requires the corresponding platform deployment. Older hosts continue to work with their existing member identity shape.
+- Guest IDs identify a browser session, not a unique human. Guest scores and progress do not become account results after login.
+- Creator servers must enforce free-only admission, exclude guest rewards/results and explicitly enable allowGuests before accepting guest grants. The default remains member-only.
+- No payment, account-storage, private-preview or iframe permissions are expanded for guests.
+
 ## 0.2.13 — 2026-09-14
 
 ### Added

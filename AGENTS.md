@@ -43,3 +43,7 @@ For multiplayer, creators operate their own authoritative server. Read [multipla
 If you are changing this SDK itself, read [maintainer contracts](docs/maintainers.md), run tests/type checks/build and inspect package contents. Preserve existing transport restrictions. A GitHub push does not publish a new npm version or deploy Spawn. Maintainers explicitly run the tested Release SDK workflow from main; see docs/maintainers.md. Read public GitHub Releases or the installed CHANGELOG.md for changes and upgrade notes.
 
 For an unpublished game, do not ask the creator to publish just to access its database. Use the private database CLI; register-self establishes the credential owner's game identity before any upload, and add-score/set can seed intentional development records. Read docs/creator-database.md. These edit hosted data, while spawn-dev uses separate fake local data. Ask before changing existing records.
+
+## Guest play
+
+Support free play with server-issued guest IDs. Read [guest play](docs/guests.md). Check `identity().isGuest`; require sign-in for hosted scores, saves, payments and rewards. Test Guest in spawn-dev and keep the shared Spawn overlay. Do not create fake member identities, silently fall back on failed authentication, or promote guest results after login.

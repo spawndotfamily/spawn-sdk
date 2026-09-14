@@ -1,7 +1,7 @@
 export function launcherHtml(token: string) {
   return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Spawn · Local testing</title><link rel="stylesheet" href="/__spawn/style.css"></head>
 <body data-document-token="${token}">
-<header><strong>SPAWN <span>LOCAL TESTING</span></strong><div class="players" aria-label="Test player"><button data-player="alice" aria-pressed="true">Alice</button><button data-player="bob" aria-pressed="false">Bob</button><button data-player="empty" aria-pressed="false">Empty balance</button></div><button id="reopen">Rebuild / reload</button><button id="disconnect">Disconnect</button><button id="reset">Reset testing</button></header>
+<header><strong>SPAWN <span>LOCAL TESTING</span></strong><div class="players" aria-label="Test player"><button data-player="alice" aria-pressed="true">Alice</button><button data-player="bob" aria-pressed="false">Bob</button><button data-player="empty" aria-pressed="false">Empty balance</button><button data-player="guest" aria-pressed="false">Guest</button></div><button id="reopen">Rebuild / reload</button><button id="disconnect">Disconnect</button><button id="reset">Reset testing</button></header>
 <div class="notice">Fake accounts, fake tokens. Nothing is sent to Spawn. Reloading clears this session. Test your private Spawn preview before publishing.</div>
 <output id="spawn-dev-state" hidden aria-hidden="true"></output>
 <main><section id="game" aria-label="Game preview"><div id="frame-slot"></div></section><aside>

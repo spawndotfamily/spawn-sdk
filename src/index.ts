@@ -36,7 +36,11 @@ export function createSpawnClient(gameId: string) {
   };
 }
 
+export type SpawnCapabilities = { play: boolean; submitScores: boolean; cloudSaves: boolean; payments: boolean; rewards: boolean };
 export type SpawnGameIdentity = {
+  /** True for a server-issued guest identity. An ID is not an authentication secret. */
+  isGuest?: boolean;
+  capabilities?: SpawnCapabilities;
   id: string;
   handle: string;
   displayName: string;
@@ -217,7 +221,7 @@ function validAvatarUrl(value: unknown, targetOrigin: string): value is string {
 }
 
 function normalizeIdentity(value: unknown, targetOrigin: string): SpawnGameIdentity {
-  if (!isObject(value) || !exactObjectKeys(value, ['id', 'handle', 'displayName', 'environment'], ['avatarUrl'])) {
+  if (!isObject(value) || !exactObjectKeys(value, ['id', 'handle', 'displayName', 'environment'], ['avatarUrl', 'isGuest', 'capabilities'])) {
     throw new Error('Spawn bridge returned an invalid identity.');
   }
   if (
@@ -231,7 +235,15 @@ function normalizeIdentity(value: unknown, targetOrigin: string): SpawnGameIdent
   if (value.avatarUrl !== undefined && value.avatarUrl !== null && !validAvatarUrl(value.avatarUrl, targetOrigin)) {
     throw new Error('Spawn bridge returned an invalid avatar URL.');
   }
+  const guestId = /^guest_[a-f0-9]{64}$/.test(value.id);
+  if (value.isGuest !== undefined && (typeof value.isGuest !== 'boolean' || value.isGuest !== guestId)) throw new Error('Spawn bridge returned an invalid guest identity.');
+  if (value.capabilities !== undefined) {
+    const caps = value.capabilities;
+    if (!isObject(caps) || !exactObjectKeys(caps, ['play', 'submitScores', 'cloudSaves', 'payments', 'rewards']) || Object.values(caps).some(v => typeof v !== 'boolean') || guestId && Object.entries(caps).some(([key, v]) => key !== 'play' && v !== false)) throw new Error('Spawn bridge returned invalid capabilities.');
+  }
   return {
+    ...(value.isGuest !== undefined || guestId ? { isGuest: guestId } : {}),
+    ...(value.capabilities !== undefined ? { capabilities: { ...value.capabilities as SpawnCapabilities } } : guestId ? { capabilities: {play:true, submitScores:false, cloudSaves:false, payments:false, rewards:false} } : {}),
     id: value.id,
     handle: value.handle,
     displayName: value.displayName,
@@ -421,7 +433,7 @@ export function createSpawnGameClient(options: { platformOrigin?: string } = {})
   }
 
   return {
-    identity: () => request<unknown>('identity', {}, GAME_BRIDGE_TIMEOUT_MS).then((value) => normalizeIdentity(value, targetOrigin)),
+    identity: () => request<unknown>('identity', { identityVersion: 2 }, GAME_BRIDGE_TIMEOUT_MS).then((value) => normalizeIdentity(value, targetOrigin)),
     load: <T>(keyOrRequest: string | { key: string }) => {
       const key = typeof keyOrRequest === 'string'
         ? keyOrRequest

@@ -30,9 +30,9 @@ Use `@spawndotfamily/sdk/multiplayer` only for its documented generic document-b
 
 Keep all VPS/private service addresses, paths, credentials, runbooks, moderation administration and first-party result/policy endpoints out of this package and its examples. Use generic creator-owned example hosts and public verification configuration. Do not delete existing working APIs without a migration; the old first-party save client is deprecated, with its original cookie restrictions unchanged. Run package-content inspection in addition to tests/check/build. No npm publication or deployment follows from building the package.
 
-## Account-required game startup
+## Shared game startup
 
-Follow [the startup integration](startup.md) before enabling any play mode. Use the shared `@spawndotfamily/sdk/startup` controller, wait for trusted identity (and verified server admission for multiplayer), gate practice/bots too, and pause on connection loss. A handshake or grant alone is not multiplayer readiness. No automatic anonymous fallback. Keep an explicit isolated development launcher separate.
+Follow [the startup integration](startup.md) before enabling any play mode. Use the shared `@spawndotfamily/sdk/startup` controller, wait for trusted guest or account identity (and verified server admission for multiplayer), gate practice/bots too, and pause on connection loss. A handshake or grant alone is not multiplayer readiness. Published free games accept server-issued guests; account features require sign-in. Follow [guest play](guests.md). No automatic anonymous fallback after connection failure. Keep an explicit isolated development launcher separate.
 
 ## Listing availability
 

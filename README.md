@@ -10,6 +10,7 @@ Keep your game, engine, and build tools. Use the features you need.
 
 | Feature | What it does |
 | --- | --- |
+| Guest play | Let players try your free game without signing in, with a unique guest ID. |
 | Player accounts | Get a player's name, avatar, and stable ID for your game. |
 | Saves and inventories | Store progress, settings, equipment, and other nested JSON data. |
 | Scores and leaderboards | Submit scores and show best scores, latest scores, or every run. You choose what players can see. |
@@ -47,7 +48,7 @@ npx --no-install spawn-publish check ./dist
 npx --no-install spawn-dev ./dist
 ```
 
-The launcher supplies fake players and balances. It does not use your real Spawn account or hosted player data. A build check catches packaging problems; you still need to play the game.
+The launcher supplies fake players, a Guest option, and balances. It does not use your real Spawn account or hosted player data. A build check catches packaging problems; you still need to play the game.
 
 When you're ready, upload the same folder using the credentials you downloaded from Spawn:
 
@@ -94,3 +95,5 @@ Multiplayer requires your own authoritative game server and an enabled Spawn int
 - [Contributing and releases](docs/maintainers.md) — instructions for working on the SDK itself.
 
 The SDK source is [MIT licensed](LICENSE). Spawn branding and third-party game assets are not included in that license.
+
+Free games can welcome guests. Log in for cloud saves, official score submissions and transactions. See [guest play](docs/guests.md).

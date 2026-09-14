@@ -66,3 +66,7 @@ Database tools work before the first upload. Read [creator database tools](creat
 All Spawn games run in a browser. Mark a game as mobile friendly only after checking touch controls and the full play loop on a phone. Read the listing version, then use `spawn-publish listing update patch.json --credentials <file>` with `{"expectedVersion":3,"devices":["browser","mobile"]}`. Replace 3 with the current version. Use `["browser"]` to remove mobile support; this changes the listing, not the game code. Older integrations may omit devices and remain browser-only.
 
 Spawn supplies the mascot loading screen while it checks the account, profile and game session. Do not add another Spawn splash or delay gameplay to finish an animation. Game-specific asset loading can still use the game's own UI. The shared connection toast and transaction controls remain platform-owned.
+
+## Guests
+
+Free published play uses a unique server-issued guest identity when signed out. Account scores, saves and transactions require sign-in. Support `identity().isGuest` and test Guest in spawn-dev. Read [guest play](guests.md); never replace failed authentication with a made-up player.

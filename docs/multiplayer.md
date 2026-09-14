@@ -82,9 +82,9 @@ Do not manufacture a document capability or sign your own Spawn ticket to make p
 
 The browser client allows a bounded 45-second initial document-load phase before its 8-second confirmation deadline. A received valid offer also starts the confirmation deadline. This prevents slow nonessential resources from using up the confirmation budget. The parent must use compatible bounds while retaining document/source/origin and one-port checks. A closed or navigated document never reconnects; reopen through Spawn for a fresh launch. This does not change signed claim validation, server replay handling or the grant-request deadline.
 
-## Account-required game startup
+## Shared game startup
 
-Follow [the startup integration](startup.md) before enabling any play mode. Use the shared `@spawndotfamily/sdk/startup` controller, wait for trusted identity (and verified server admission for multiplayer), gate practice/bots too, and pause on connection loss. A handshake or grant alone is not multiplayer readiness. No automatic anonymous fallback. Keep an explicit isolated development launcher separate.
+Follow [the startup integration](startup.md) before enabling any play mode. Use the shared `@spawndotfamily/sdk/startup` controller, wait for trusted guest or account identity (and verified server admission for multiplayer), gate practice/bots too, and pause on connection loss. A handshake or grant alone is not multiplayer readiness. Published free games accept server-issued guests; account features require sign-in. Follow [guest play](guests.md). No automatic anonymous fallback after connection failure. Keep an explicit isolated development launcher separate.
 
 ### Long-running game windows
 

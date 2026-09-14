@@ -41,3 +41,11 @@ test('pinned signature, exact headers, scope and labels reject altered or unsupp
  for(const changed of [{scope:['multiplayer:join','admin']},{clientId:'other-player'},{client_id:'other-player'},{displayName:'unsafe\nlabel'},{sub:'x'.repeat(129)},{nbf:now/1000+6}])assert.throws(()=>verifier.verify(signed(supported,{...claims,...changed})),/invalid/i);
  assert.throws(()=>verifier.verify(signed(supported,[])),/invalid/i);
 });
+
+test('guest admission is explicit, free-only and cannot masquerade as a member',()=>{
+ const guest={isGuest:true,sub:'guest_'+'a'.repeat(64),scope:['multiplayer:join:free']};
+ assert.throws(()=>createSpawnLaunchVerifier(options).verify(grant(guest)),/invalid/i);
+ const verifier=createSpawnLaunchVerifier({...options,allowGuests:true});
+ assert.equal(verifier.verify(grant(guest)).isGuest,true);
+ for(const extra of [{...guest,scope:['multiplayer:join']},{...guest,isGuest:false},{...guest,sub:randomUUID()},{sub:guest.sub}])assert.throws(()=>verifier.verify(grant(extra)),/invalid/i);
+});

@@ -68,3 +68,12 @@ test('local leaderboards require operator opt-in, apply one-player policy and re
   assert.equal(state.getLeaderboard({ limit: 1 }).nextOffset, 1);
   assert.throws(() => state.getLeaderboard({ limit: 51 }), /limit/);
 });
+
+test('guest fixtures have stable unique IDs and cannot use account records or tokens',()=>{
+ const state=new LocalTestState(),guest=state.identity('guest');
+ assert.equal(guest.isGuest,true);assert.equal(state.identity('guest').id,guest.id);
+ assert.notEqual(new LocalTestState().identity('guest').id,guest.id);
+ assert.equal(guest.capabilities?.payments,false);
+ for(const action of [()=>state.score('guest',10,{}),()=>state.save('guest','x',{},0),()=>state.load('guest','x'),()=>state.quote('guest','launch','entry')])assert.throws(action,/sign in/i);
+ assert.equal(state.scores.length,0);assert.equal(state.economy.history.length,0);
+});

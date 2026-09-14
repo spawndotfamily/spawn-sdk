@@ -511,3 +511,17 @@ await test('game data bridge scopes reads and preserves explicit score retry IDs
     port.emit(responseFor(port.calls.at(-1)!, { id: 'score', verification: 'unverified' })); await score;
   } finally { client.dispose(); surface.restore(); }
 });
+
+test('negotiates guest identity without changing the legacy member shape', async()=>{
+ const surface=installEmbeddedWindow();
+ try {
+  const client=sdk.createSpawnGameClient({platformOrigin:PLATFORM_ORIGIN});const port=makePort();
+  const pending=client.identity();surface.emit({source:surface.parent,origin:PLATFORM_ORIGIN,data:{type:'spawn:connected',version:1},ports:[port]});
+  assert.deepEqual(port.calls[0].payload,{identityVersion:2});
+  const guest={id:'guest_'+'a'.repeat(64),handle:'Guest_aaaaaaaa',displayName:'Guest',avatarUrl:null,environment:'sandbox',isGuest:true,capabilities:{play:true,submitScores:false,cloudSaves:false,payments:false,rewards:false}};
+  port.emit(responseFor(port.calls[0],guest));assert.deepEqual(await pending,guest);
+  const invalid=client.identity();port.emit(responseFor(port.calls.at(-1)!,{...guest,capabilities:{...guest.capabilities,payments:true}}));await assert.rejects(invalid,/capabilities/);
+  const legacy=client.identity();const {isGuest,capabilities,...oldShape}=guest;port.emit(responseFor(port.calls.at(-1)!,oldShape));assert.equal((await legacy).isGuest,true);
+  client.dispose();
+ }finally{surface.restore();}
+});
