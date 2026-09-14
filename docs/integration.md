@@ -75,3 +75,9 @@ The local launcher now models this split and shows a separate Spawn fee balance.
 ## Player data in SDK 0.2.9
 
 See [player data and leaderboards](game-data.md) for nested JSON, listSaves/remove, getLeaderboard, creator opt-in, quotas and submission retry IDs. The platform supplies a compact top-right connection and transaction overlay; no full-width header is required in your game.
+
+## Migrating the old package name
+
+The public npm package is `@spawndotfamily/sdk`. For existing integrations that used `@spawn/sdk`, update imports, including subpaths, to the public name. Alternatively, install an npm alias with `npm install --save-exact --ignore-scripts @spawn/sdk@npm:@spawndotfamily/sdk` to preserve existing imports. Choose one approach, review the release notes, and ask before upgrading an existing integration. Keep the lockfile.
+
+This package-name change does not make `createSpawnClient('rob-the-rich')` a public creator API. That deprecated first-party compatibility client keeps its original same-origin cookie restrictions; creator games use `createSpawnGameClient` and the documented startup flow.

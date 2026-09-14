@@ -1,86 +1,96 @@
 # Spawn SDK
 
-[Release notes — what changed](https://github.com/spawndotfamily/spawn-sdk/releases) · [Publishing status](https://github.com/spawndotfamily/spawn-sdk/actions/workflows/release.yml)
+Bring your browser game to [Spawn](https://spawn.family). Connect players to their Spawn accounts, save their progress, display leaderboards, and upload a playable preview from your game folder.
 
-**Start here:** [Feature menu and one-prompt workflow](docs/creator-guide.md). Choose only what your game needs; a finished browser game does not need a Spawn template or GitHub connection.
+Keep your game, engine, and build tools. Use the features you need.
 
-Published games still use non-redeemable TEST services today. `environment: 'sandbox'` describes the currency environment, not whether a game is approved or local.
+[Install on npm](https://www.npmjs.com/package/@spawndotfamily/sdk) · [Release notes](https://github.com/spawndotfamily/spawn-sdk/releases) · [Examples](examples)
 
+## What you can build
 
-Integrate a browser game with Spawn without access to Spawn's private infrastructure. Creators operate their own multiplayer servers. Spawn provides an optional small, player-and-game-scoped save store; it does not provision creator servers or give creators access to its database engine, VPS or administrator services.
+| Feature | What it does |
+| --- | --- |
+| Player accounts | Get a player's name, avatar, and stable ID for your game. |
+| Saves and inventories | Store progress, settings, equipment, and other nested JSON data. |
+| Scores and leaderboards | Submit scores and show best scores, latest scores, or every run. You choose what players can see. |
+| Creator database | Read and manage your game's player data from your computer, even before the first upload. |
+| TEST payments | Let players confirm an optional entry payment through Spawn's shared overlay. |
+| Local testing | Try fake accounts, saves, scores, payments, and creator-pool controls before uploading. |
+| Publishing | Upload your browser build and manage its listing and images. |
 
-Install the published package using `npm install --save-exact @spawndotfamily/sdk@0.2.11 --ignore-scripts`. Read `node_modules/@spawndotfamily/sdk/AGENTS.md` and `node_modules/@spawndotfamily/sdk/docs/creator-checklist.md` before integrating. Bundle browser dependencies with your game; no UI framework is required; the CLI includes a JavaScript parser. The public GitHub repository remains available for source inspection.
+**Payments currently use TEST tokens with no cash value.** Real-money deposits and redeemable payouts are not enabled. Publishing a game does not change this.
 
-## Choose an integration
+## Publish with your AI agent
 
-| Entry point | Purpose | Availability |
-| --- | --- | --- |
-| `@spawndotfamily/sdk` → `createSpawnGameClient` | Isolated uploaded game: public player label, own saves, unverified submissions and fixed TEST entry receipts | Implemented browser contract; requires a Spawn-launched `/build/...` document |
-| `@spawndotfamily/sdk/multiplayer` → `createSpawnMultiplayerClient` | Request short-lived signed launch proof and, when enabled, ask Spawn to present a TEST match-entry confirmation | Requires Spawn to enable the game/server and the generic multiplayer parent protocol; SDK alone does not enable registration |
-| `@spawndotfamily/sdk/server` → `createSpawnLaunchVerifier` | Verify that proof on your Node server using pinned **public** keys | Local helper, no network calls, hosting, account administration or access to Spawn storage |
-| `spawn-publish` | Upload a prebuilt browser directory and check its private preview | Scoped, expiring publishing credential; listing details/images require explicit listing:write and platform availability; never publication approval |
+1. **Open your game workspace on Spawn.** Under Publish, download the credentials and copy your game's agent prompt.
+2. **Paste the prompt into your coding agent with your game project open.** The agent reads the SDK guides, helps connect the features you choose, builds the game, tests it locally, and uploads a private preview.
+3. **Play the preview and submit it for review.** Spawn reviews your first listing before the game becomes discoverable. Later updates still need your approval in Releases.
 
-Multiplayer self-service server registration is not available. The generic parent protocol is a coordinated platform activation dependency. Existing reviewed games may use the legacy protocol until migration; new SDK game builds must wait for generic-protocol activation. The SDK must not be used to guess undocumented endpoints. A creator needs no Spawn VPS address, login, internal URL or private signing key.
+Your credentials stay on your computer, outside your source repository and uploaded build. They give the agent scoped access to this game; they cannot approve releases or move tokens. You do not need a GitHub repository.
 
-## Optional saves in an uploaded preview
+**For coding agents:** start with [AGENTS.md](AGENTS.md). It links to the integration checklist, feature-specific instructions, and troubleshooting steps.
 
-```js
-import {createSpawnGameClient} from '@spawndotfamily/sdk';
-const spawn=createSpawnGameClient();
-const prior=await spawn.load('progress');
-await spawn.save('progress',{level:3},prior?.version??0);
-window.addEventListener('pagehide',()=>spawn.dispose(),{once:true});
-```
+## Set up by hand
 
-The launcher supplies the public platform origin; an explicit trusted origin can override it. Local preview development uses literal loopback HTTP. The client operates inside the isolated Spawn frame; it never forwards an account cookie to the game origin. Save at checkpoints, not each frame. Handle conflicts and quota errors without deleting unrelated records.
-
-Limits: 65,536 JSON bytes per record, 256 records / 1,048,576 bytes per player per game, and 100,000 records / 100,000,000 bytes per game, subject to shared capacity. These are JSON payload allowances, not disk guarantees. See [game data](docs/game-data.md). Creator agents can read and manage their own game data before publishing using the private [database CLI](docs/creator-database.md); no raw SQL or browser database credentials are exposed.
-
-Player identity returned in a browser is display information. Saves and submitted scores are untrusted. No wallet, real charge, redeemable reward or guaranteed anti-cheat is provided. Existing `requestPayment('entry')` is fixed sandbox TEST behavior, not live payments.
-
-## Multiplayer on your own server
-
-Use the browser module to request launch proof and the separate server module to verify it. See [the complete multiplayer guide](docs/multiplayer.md) and [plain JavaScript examples](examples). Keep server code outside the uploaded browser build. Your game server controls connections, movement, health, damage, scores and sessions. Never treat a browser-supplied player ID as authority.
-
-For enabled multiplayer matches, `requestMatchEntry({ matchId })` opens a Spawn-owned TEST confirmation. Its `reserved` or `cancelled` result is only a presentation acknowledgement; it is not admission proof or a match-start signal. See [match-entry presentation](docs/match-payments.md).
-
-## Build and publish a private preview
-
-Requires Node 22.13+ and npm. The npm package includes compiled JavaScript, TypeScript declarations, and both command-line tools. SDK contributors use `npm ci`, `npm test`, `npm run check`, and `npm run build` in the source checkout. The SDK is not a CDN dependency and `@spawndotfamily/sdk/server` must never be bundled into browser assets.
+You'll need Node.js 22.13 or newer and npm. In your game project, install the SDK:
 
 ```sh
-npx --no-install spawn-publish publish ./game-build --credentials ~/Downloads/spawn-project-<projectId>.json
-npx --no-install spawn-publish status <release-id> --credentials ~/Downloads/spawn-project-<projectId>.json
+npm install --save-exact --ignore-scripts @spawndotfamily/sdk
 ```
 
-The downloaded credential is for your local publishing CLI only. Keep it outside the game build, source, logs and prompts. Remote publishing streams a manifest and bounded 8 MiB chunks through Spawn’s isolated upload worker; local reference installations without a worker retain the bounded legacy path. The creator approves that exact artifact in Spawn, and listing remains platform-controlled. See [publishing instructions](docs/publishing.md) for limits and options.
+Follow the [browser integration guide](docs/integration.md) and [startup example](docs/startup.md) to connect your game. Bundle the SDK with your browser assets so all its dependencies are included. No particular UI framework is required.
 
-Read [security boundaries](docs/security.md) and [integration details](docs/integration.md) before shipping. `createSpawnClient('rob-the-rich')` remains a **deprecated, reviewed first-party compatibility API**; creators should use the isolated client above. Its same-origin cookie allowlist is deliberately unchanged.
+Once you have a browser build, check it and open the local test launcher:
 
-Source is MIT licensed. Spawn branding and third-party game assets are not included in that license.
+```sh
+npx --no-install spawn-publish check ./dist
+npx --no-install spawn-dev ./dist
+```
 
-## Creator integration workflow
+The launcher supplies fake players and balances. It does not use your real Spawn account or hosted player data. A build check catches packaging problems; you still need to play the game.
 
-Agents integrating an existing game must follow [the complete creator checklist](docs/creator-checklist.md), starting from the private creator credentials and the installed SDK workflow. Keep ordinary launches free; optional fixed TEST interactions require a separate deliberate player action and Spawn confirmation. Multiplayer launch readiness allows up to 45 seconds for initial document loading, then 8 seconds for channel confirmation. Grant requests keep their 8-second deadline. Navigation still permanently closes that document.
+When you're ready, upload the same folder using the credentials you downloaded from Spawn:
 
-## Account-required game startup
+```sh
+npx --no-install spawn-publish publish ./dist --credentials /path/to/spawn-project.json
+```
 
-Follow [the startup integration](docs/startup.md) before enabling any play mode. Use the shared `@spawndotfamily/sdk/startup` controller, wait for trusted identity (and verified server admission for multiplayer), gate practice/bots too, and pause on connection loss. A handshake or grant alone is not multiplayer readiness. No automatic anonymous fallback. Keep an explicit isolated development launcher separate.
+Replace the example paths with your build folder and credentials file. The command returns a private preview link. Open it, test the game, then submit it from Releases.
 
-## Game details and images
+## Which games can I upload?
 
-The CLI provides `listing get/update` and `image add/replace/remove` using a downloaded credential file. These endpoints are enabled in Spawn’s TEST beta; use the package and scopes supplied by your platform. Follow [the exact commands and limits](docs/publishing.md#game-details-and-images). Old keys remain build-only; new listing edits require explicit `listing:write`. Editing metadata does not publish a draft or bypass review.
+Upload a finished **browser build** with `index.html` at the top level, alongside the scripts, images, sounds, and other assets it needs:
 
-## Local testing and GitHub
+```text
+my-game-build/
+├── index.html
+├── game.js
+└── assets/
+    ├── character.png
+    └── music.ogg
+```
 
-Run `./node_modules/.bin/spawn-publish check ./dist`, then `./node_modules/.bin/spawn-dev ./dist` to test the unchanged game SDK with fake local accounts and a mandatory TEST confirmation overlay. The local creator panel also supports pool top-ups, withdrawals and manual rewards to fake players, with transfer receipts and unverified scores. No credentials are needed. These controls never grant the game creator authority. Follow [the testing guide](docs/testing.md), then test a private Spawn preview before approval.
+The folder can be called `dist`, `web`, `build`, or anything else. The name doesn't matter. HTML, JavaScript, and WebAssembly builds are supported; having an `index.html` alone doesn't guarantee compatibility. Native desktop or mobile games need a working web export. Games with a backend still need that backend hosted separately.
 
-The website's GitHub importer accepts a prebuilt repository folder or an Actions artifact named `spawn-browser-build`. Private repositories require a configured GitHub App and creator authorization. Build scripts run on the creator's computer or their GitHub Actions runner, never on Spawn's accounts server. See [publishing](docs/publishing.md#github-builds).
+The default upload allowance is **1 GB and 1,000 files**. Include the finished browser files, not credentials, `node_modules`, or native executables. Mark a game as mobile friendly after testing its touch controls and layout.
 
-Multiplayer integrations can refresh protected game-server resource paths through the established admission channel without reloading the game. See [long-running game windows](docs/multiplayer.md#long-running-game-windows).
+Already have a build? You can also use **Manual upload** or **GitHub import** in Spawn. GitHub imports finished files; it does not automatically publish every push. See [build formats and publishing options](docs/publishing.md).
 
-Local creator testing includes the configurable incoming platform fee and a separate fake Spawn fee balance. See [fee integration](docs/integration.md#platform-fees-and-creator-rewards). Hosted multiplayer settlement is a separate integration and remains unavailable until enabled.
+## Data, payments, and multiplayer
 
-## Migrating existing source integrations
+Your game's database supports nested objects and arrays, with storage limits and version checks to protect against accidental overwrites. See [player data and leaderboards](docs/game-data.md) and [creator database tools](docs/creator-database.md).
 
-The public npm name is `@spawndotfamily/sdk` because the `@spawn` namespace is unavailable. Update imports from `@spawn/sdk` to `@spawndotfamily/sdk`, including subpaths. Alternatively, preserve existing imports with `npm install --save-exact @spawn/sdk@npm:@spawndotfamily/sdk@0.2.11 --ignore-scripts`. Both names expose the same SDK APIs and CLI commands; choose one installation approach.
+Spawn handles connection notices, transaction history, and payment confirmation through one shared overlay. The current platform fee is 5% on funds entering a creator pool; outgoing rewards have no additional platform fee. **Browser-submitted scores and saves are unverified:** use manual review or supported trusted-server validation before awarding tokens.
+
+Multiplayer requires your own authoritative game server and an enabled Spawn integration. Server registration is not self-service, and the SDK does not provide server hosting. See the [multiplayer guide](docs/multiplayer.md).
+
+## Guides and help
+
+- [Local testing](docs/testing.md) — test accounts, saves, payments, and reconnects.
+- [Troubleshooting](docs/troubleshooting.md) — missing files, connection errors, and upload failures.
+- [Security and permissions](docs/security.md) — what the SDK and credentials can access.
+- [Changelog](CHANGELOG.md) — additions, changes, and upgrade notes. Check these before updating an existing game.
+- [Report a problem](https://github.com/spawndotfamily/spawn-sdk/issues) — include the SDK version and error message; leave credentials out.
+- [Contributing and releases](docs/maintainers.md) — instructions for working on the SDK itself.
+
+The SDK source is [MIT licensed](LICENSE). Spawn branding and third-party game assets are not included in that license.

@@ -10,6 +10,19 @@ Before each editing session, compare the installed version with `npm view @spawn
 
 Before uploading, bundle the browser SDK with the game. Copying only its index.js omits transitive modules such as game-data.js and breaks startup. Run spawn-publish check, then spawn-dev and the actual private preview; read [diagnostics](docs/troubleshooting.md) if any step fails.
 
+## Find the instructions for your task
+
+The README is the human-facing introduction. Keep operational instructions here and in the linked guides rather than expanding the README into an agent checklist.
+
+| Task | Read |
+| --- | --- |
+| Plan an integration and choose features | [Creator guide](docs/creator-guide.md), then [checklist](docs/creator-checklist.md) |
+| Connect identity and handle startup | [Integration](docs/integration.md) and [startup](docs/startup.md) |
+| Store progress or display scores | [Game data](docs/game-data.md) and [creator database](docs/creator-database.md) |
+| Build, test, and upload | [Testing](docs/testing.md), [publishing](docs/publishing.md), and [troubleshooting](docs/troubleshooting.md) |
+| Add payments or multiplayer | [Payment flow](docs/integration.md#spawn-owned-test-payment-flow), [multiplayer](docs/multiplayer.md), and [match entry](docs/match-payments.md) |
+| Change or release the SDK | [Maintainer contracts](docs/maintainers.md) |
+
 ## Non-negotiable boundaries
 
 - **Credentials stay local and private.** Use the downloaded file through the CLI. Never paste its key into chat, command arguments, Git, browser code, logs or screenshots. It grants this game's upload/status and explicitly scoped listing and database edits, not approval, ownership, pricing, wallet or payout authority.
