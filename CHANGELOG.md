@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.3.0 — 2026-09-15
+
+### Added
+- Listing token commands (`spawn-publish token search`, `token get` and `token configure`) resolve enabled Spawn launches or explicitly approved partner assets and update this project's token entry settings through the scoped CLI.
+- `requestTokenPayment({ amount?, item? })` requests an optional entry amount using the single token selected in the project Listing and returns the configured payment receipt shape.
+
+### Changed
+- `requestPayment('entry')` uses the Listing's selected asset and default entry amount when configured, while retaining the fixed 10 TEST fallback when no token is selected.
+- Configured payment receipts are `{ id, assetId, amount, projectId, status: 'paid' }`; `amount` is an exact integer base-unit string. Browser requests contain no token address, recipient, player ID or fee, and Spawn's trusted overlay owns confirmation.
+- Creator guidance now distinguishes historical TEST sandbox payments from non-redeemable testnet token entries and documents exact decimal input without floating-point conversion.
+
+### Upgrade notes
+- Configured entries require a platform deployment with the token catalogue, versioned Listing token settings and quote/confirmation routes. Hosted configuration is limited to admitted assets on chain ID 46630; chain ID 31337 is for loopback testing only. No mainnet or live-money behavior is enabled.
+- Token settings writes require a newly downloaded credential with `token:configure`; existing credential files do not gain that scope. The CLI updates the Listing asset and default amount together and uses version `0` for first configuration.
+- Games should keep token selection in the Listing and call `requestTokenPayment` with only an optional exact human-readable decimal amount and item label. Games without a configured token continue using the historical TEST receipt contract.
+- `requestPayment` now has a TypeScript union return (`SpawnTestPayment | SpawnTokenPaymentReceipt`). Narrow with `'assetId' in receipt` before reading token fields, or use the TEST branch for `asset`, `intentId` and numeric `amount`. The historical TEST receipt remains available at runtime, but the union is not source-compatible with code that assumes the old TEST-only return type.
+- Republish a game with SDK 0.3.0 before selecting a Listing token. `requestPayment` advertises token-receipt validation before charging; older SDKs can reject a configured token receipt after payment. Existing TEST hosts ignore this marker and keep the legacy fallback.
+
 ## 0.2.14 — 2026-09-14
 
 ### Added

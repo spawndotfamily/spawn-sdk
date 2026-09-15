@@ -139,6 +139,6 @@ export async function runListingCommand(inputConfig: PublishConfig, command: Lis
   const response = await requestJson(config, base + path, {
     method, headers: { Authorization: `Bearer ${config.publishKey}`, ...(body ? { 'Content-Type': 'application/json' } : {}) },
     ...(body ? { body: JSON.stringify(body) } : {}),
-  }, fetchImplementation, true);
+  }, fetchImplementation, 'listing');
   return publicListing(response);
 }

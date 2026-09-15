@@ -418,13 +418,6 @@ test('shapes bridge methods without accepting arbitrary payment or score authori
 
     const payment = client.requestPayment('entry');
     const paymentRequest = port.calls.at(-1)!;
-    assert.deepEqual(paymentRequest, {
-      type: 'spawn:request',
-      version: 1,
-      id: paymentRequest.id,
-      method: 'requestPayment',
-      payload: { productId: 'entry' },
-    });
     port.emit(responseFor(paymentRequest, {
         id: 'payment-1',
         intentId: 'intent-1',
@@ -434,10 +427,16 @@ test('shapes bridge methods without accepting arbitrary payment or score authori
         status: 'paid',
       }));
     assert.equal((await payment).amount, 10);
+    assert.deepEqual(paymentRequest, {
+      type: 'spawn:request',
+      version: 1,
+      id: paymentRequest.id,
+      method: 'requestPayment',
+      payload: { productId: 'entry', tokenReceiptVersion: 1 },
+    });
 
     const objectPayment = client.requestPayment({ productId: 'entry' });
     const objectPaymentRequest = port.calls.at(-1)!;
-    assert.deepEqual(objectPaymentRequest.payload, { productId: 'entry' });
     port.emit(responseFor(objectPaymentRequest, {
         id: 'payment-2',
         intentId: 'intent-2',
@@ -447,6 +446,7 @@ test('shapes bridge methods without accepting arbitrary payment or score authori
         status: 'paid',
       }));
     await objectPayment;
+    assert.deepEqual(objectPaymentRequest.payload, { productId: 'entry', tokenReceiptVersion: 1 });
 
     const cancelled = client.requestPayment('entry');
     const cancelledRequest = port.calls.at(-1)!;
@@ -524,4 +524,148 @@ test('negotiates guest identity without changing the legacy member shape', async
   const legacy=client.identity();const {isGuest,capabilities,...oldShape}=guest;port.emit(responseFor(port.calls.at(-1)!,oldShape));assert.equal((await legacy).isGuest,true);
   client.dispose();
  }finally{surface.restore();}
+});
+
+test('entry payment accepts the listing token receipt and explicit token requests send only amount and item', async () => {
+  const surface = installEmbeddedWindow();
+  try {
+    const client = sdk.createSpawnGameClient({ platformOrigin: PLATFORM_ORIGIN });
+    const port = makePort();
+    surface.emit({ source: surface.parent, origin: PLATFORM_ORIGIN, data: { type: 'spawn:connected', version: 1 }, ports: [port] });
+    const entry = client.requestPayment('entry');
+    const entryRequest = port.calls.at(-1)!;
+    assert.equal(entryRequest.method, 'requestPayment');
+    port.emit(responseFor(entryRequest, {
+      id: 'payment_0',
+      assetId: 'erc20:46630:0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+      amount: '1000001',
+      projectId: '123e4567-e89b-12d3-a456-426614174000',
+      status: 'paid',
+    }));
+    assert.equal((await entry).assetId, 'erc20:46630:0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa');
+    assert.deepEqual(entryRequest.payload, { productId: 'entry', tokenReceiptVersion: 1 });
+
+    const request = client.requestTokenPayment({ amount: '0.000001', item: 'Entry' });
+    const bridgeRequest = port.calls.at(-1)!;
+    assert.equal(bridgeRequest.method, 'requestTokenPayment');
+    assert.deepEqual(bridgeRequest.payload, { amount: '0.000001', item: 'Entry' });
+    port.emit(responseFor(bridgeRequest, {
+      id: 'payment_1',
+      assetId: 'erc20:46630:0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+      amount: '1000001',
+      projectId: '123e4567-e89b-12d3-a456-426614174000',
+      status: 'paid',
+    }));
+    assert.deepEqual(await request, {
+      id: 'payment_1',
+      assetId: 'erc20:46630:0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+      amount: '1000001',
+      projectId: '123e4567-e89b-12d3-a456-426614174000',
+      status: 'paid',
+    });
+
+    const callsBeforeInvalidOptions = port.calls.length;
+    await assert.rejects(client.requestTokenPayment({ amount: 0.25 as unknown as string }), /decimal string/i);
+    await assert.rejects(client.requestTokenPayment({ assetId: 'erc20:46630:0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa' } as unknown as sdk.SpawnTokenPaymentOptions), /only an optional amount and item/i);
+    assert.equal(port.calls.length, callsBeforeInvalidOptions, 'invalid token options must not reach Spawn');
+
+    const empty = client.requestTokenPayment();
+    const emptyRequest = port.calls.at(-1)!;
+    assert.deepEqual(emptyRequest.payload, {});
+    port.emit(responseFor(emptyRequest, {
+      id: 'payment_3',
+      assetId: 'erc20:46630:0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+      amount: '1',
+      projectId: '123e4567-e89b-12d3-a456-426614174000',
+      status: 'paid',
+    }));
+    await empty;
+
+    const invalid = client.requestTokenPayment();
+    const invalidRequest = port.calls.at(-1)!;
+    port.emit(responseFor(invalidRequest, {
+      id: 'payment_2',
+      assetId: 'erc20:46630:0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+      amount: 1000001,
+      projectId: '123e4567-e89b-12d3-a456-426614174000',
+      status: 'paid',
+    }));
+    await assert.rejects(invalid, /invalid token payment/i);
+
+    const wrongNetwork = client.requestTokenPayment();
+    const wrongNetworkRequest = port.calls.at(-1)!;
+    port.emit(responseFor(wrongNetworkRequest, {
+      id: 'payment_4',
+      assetId: 'erc20:31337:0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+      amount: '1',
+      projectId: '123e4567-e89b-12d3-a456-426614174000',
+      status: 'paid',
+    }));
+    await assert.rejects(wrongNetwork, /invalid token payment/i);
+    client.dispose();
+  } finally {
+    surface.restore();
+  }
+});
+
+test('enforces the hosted 80-character token item limit while preserving the boundary', async () => {
+  const surface = installEmbeddedWindow();
+  try {
+    const client = sdk.createSpawnGameClient({ platformOrigin: PLATFORM_ORIGIN });
+    const port = makePort();
+    surface.emit({ source: surface.parent, origin: PLATFORM_ORIGIN, data: { type: 'spawn:connected', version: 1 }, ports: [port] });
+
+    const accepted = client.requestTokenPayment({ item: 'x'.repeat(80) });
+    const acceptedRequest = port.calls.at(-1)!;
+    assert.deepEqual(acceptedRequest.payload, { item: 'x'.repeat(80) });
+    port.emit(responseFor(acceptedRequest, {
+      id: 'payment_item_80',
+      assetId: 'erc20:46630:0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+      amount: '1',
+      projectId: '123e4567-e89b-12d3-a456-426614174000',
+      status: 'paid',
+    }));
+    await accepted;
+
+    const callsBeforeInvalid = port.calls.length;
+    const rejected = client.requestTokenPayment({ item: 'x'.repeat(81) });
+    if (port.calls.length > callsBeforeInvalid) {
+      const invalidRequest = port.calls.at(-1)!;
+      port.emit(responseFor(invalidRequest, {
+        id: 'payment_item_81',
+        assetId: 'erc20:46630:0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+        amount: '1',
+        projectId: '123e4567-e89b-12d3-a456-426614174000',
+        status: 'paid',
+      }));
+    }
+    await assert.rejects(rejected, /80|item|label/i);
+    assert.equal(port.calls.length, callsBeforeInvalid);
+    client.dispose();
+  } finally {
+    surface.restore();
+  }
+});
+
+test('token receipt chain 31337 is accepted only for a loopback platform origin', async () => {
+  const surface = installEmbeddedWindow();
+  try {
+    const localOrigin = 'http://127.0.0.1:3003';
+    const client = sdk.createSpawnGameClient({ platformOrigin: localOrigin });
+    const port = makePort();
+    surface.emit({ source: surface.parent, origin: localOrigin, data: { type: 'spawn:connected', version: 1 }, ports: [port] });
+    const pending = client.requestTokenPayment();
+    const request = port.calls.at(-1)!;
+    port.emit(responseFor(request, {
+      id: 'payment_local',
+      assetId: 'erc20:31337:0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+      amount: '1',
+      projectId: '123e4567-e89b-12d3-a456-426614174000',
+      status: 'paid',
+    }));
+    assert.equal((await pending).assetId, 'erc20:31337:0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa');
+    client.dispose();
+  } finally {
+    surface.restore();
+  }
 });

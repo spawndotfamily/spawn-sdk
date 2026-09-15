@@ -1,6 +1,6 @@
 # Test your game locally
 
-Use the same browser integration before and after upload. The local launcher supplies fake players and TEST balances; it has no connection to Spawn accounts, wallets or rewards.
+Use the same browser integration before and after upload. The local launcher supplies fake players and TEST balances; it has no connection to Spawn accounts, wallets or rewards. Its `spawn-dev` bridge deliberately remains a fixed TEST simulator. Validate listing-configured token selection and custom token amounts in a private Spawn preview.
 
 ## Build, open, play
 
@@ -34,6 +34,8 @@ Both launchers supply a public `platformOrigin` configuration before game code. 
 | Request optional `entry` payment, then Cancel | No debit and no paid entitlement |
 | Confirm the displayed 10 TEST | Processing, Paid checkmark, then Continue returns a fake receipt |
 | Request the same entry again in that launch | Same receipt; no second debit |
+| Request a listing-configured token entry in a private preview | Spawn confirms the listing asset and configured default amount; SDK returns an integer base-unit amount string |
+| Request a custom token amount with `requestTokenPayment({ amount: '0.25', item: 'Entry' })` in a private preview | Spawn uses the same listing asset and shows its confirmation; browser code never supplies the asset address |
 | Choose Empty balance | Payment fails without a negative balance |
 | Disconnect, close or reopen | Game pauses on loss; a new launch reconnects through startup |
 | Submit a score | Unverified local record; no automatic reward |
@@ -66,7 +68,7 @@ All balances are fake and belong to this one local browser session:
 
 The panel shows current balances, the latest 12 transfers and their local receipt IDs, and the latest five unverified scores. State retains at most 100 transfers and 100 scores in memory. Closing or reloading the page clears them. No fee or tax is simulated; economics are not finalized.
 
-Creator controls are launcher tools, **not game SDK methods**. Do not copy them into the game, add a browser reward endpoint or pay directly from client-supplied wins. The game bridge still supports only identity, saves, unverified scores and the documented entry request. Receiving a simulated reward updates the launcher balance; there is no game balance/reward-event subscription API. Inspect results in the panel rather than inventing one.
+Creator controls are launcher tools, **not game SDK methods**. Do not copy them into the game, add a browser reward endpoint or pay directly from client-supplied wins. The local game bridge supports identity, saves, unverified scores, fixed TEST entry requests and simulated creator-panel flows. It does not simulate listing-configured tokens. Receiving a simulated reward updates the launcher balance; there is no game balance/reward-event subscription API. Inspect results in the panel rather than inventing one.
 
 ## Move from local testing to Spawn
 

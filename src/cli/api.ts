@@ -141,7 +141,7 @@ export async function requestJson(
   url: string,
   init: RequestInit,
   fetchImplementation: FetchLike,
-  listing = false,
+  endpoint: 'publish' | 'listing' | 'token' | 'token-list' = 'publish',
 ): Promise<Record<string, unknown>> {
   if (typeof fetchImplementation !== 'function') {
     throw new PublishCliError('The publishing CLI requires a fetch implementation.');
@@ -179,11 +179,13 @@ export async function requestJson(
     if (timer !== undefined) clearTimeout(timer);
   }
   const { response, body } = result;
-  if (listing && !response.ok) {
-    const message = response.status === 409 ? 'The listing version changed. Get the listing again and review your edit before retrying.'
-      : response.status === 404 || response.status === 501 ? 'Listing editing is not available for this project or platform yet.'
-      : response.status === 401 || response.status === 403 ? 'Listing access was denied. Check your downloaded credential file and its scopes.'
-      : `Spawn listing request failed with HTTP ${response.status}.`;
+  if (endpoint !== 'publish' && !response.ok) {
+    const label = endpoint === 'listing' ? 'listing' : endpoint === 'token-list' ? 'token list' : 'token settings';
+    const accessLabel = endpoint === 'listing' ? 'Listing' : endpoint === 'token-list' ? 'Token list' : 'Token settings';
+    const message = response.status === 409 && endpoint !== 'token-list' ? `The ${label} version changed. Read the current ${label}, review it and retry deliberately.`
+      : response.status === 404 || response.status === 501 ? `${endpoint === 'listing' ? 'Listing editing' : endpoint === 'token-list' ? 'Token search' : 'Token configuration'} is not available for this project or platform yet.`
+      : response.status === 401 || response.status === 403 ? `${accessLabel} access was denied${endpoint === 'token-list' ? '.' : '. Check your downloaded credential file and its scopes.'}`
+      : `Spawn ${label} request failed with HTTP ${response.status}.`;
     throw new PublishCliError(message);
   }
   if (!response.ok) {

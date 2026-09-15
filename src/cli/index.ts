@@ -6,6 +6,7 @@ export { PublishCliError, PUBLISH_REQUEST_TIMEOUT_MS } from './api.ts';
 export type { PublishConfig } from './api.ts';
 import { parseListingCommand, runListingCommand, LISTING_USAGE } from './listing.ts';
 import type { ListingCommand } from './listing.ts';
+import { parseTokenCommand, runTokenCommand, TOKEN_USAGE, type TokenCommand } from './game-tokens.ts';
 import { inspectBrowserBuild, publishBrowserDirectory } from './upload-client.ts';
 // @ts-ignore Node's runtime modules are available to the CLI without adding a runtime dependency.
 import { lstat, opendir, realpath } from 'node:fs/promises';
@@ -115,6 +116,7 @@ type RuntimeProcess = {
 type Command =
   | DatabaseCommand
   | ListingCommand
+  | TokenCommand
   | { kind: 'help' }
   | { kind: 'check'; directory: string }
   | { kind: 'publish'; directory: string; sourceCommit?: string; credentialsPath?: string }
@@ -125,6 +127,7 @@ export const CLI_USAGE = `Usage:
   spawn-publish publish <browser-build-directory> [--credentials <file>] [--source-commit <40-hex-commit>]
   spawn-publish status <release-id> [--credentials <file>]
 ${LISTING_USAGE}
+${TOKEN_USAGE}
 ${DATABASE_USAGE}
 `;
 
@@ -391,7 +394,7 @@ export async function readCredentialsFile(credentialsPath: string, now = Date.no
   if (!Number.isFinite(expiresAt)) throw new PublishCliError('The credentials file has an invalid expiry.');
   if (expiresAt <= now) throw new PublishCliError('The credentials file has expired.');
 
-  if (parsed.scopes !== undefined && (!Array.isArray(parsed.scopes) || parsed.scopes.length > 6 || parsed.scopes.some(scope => typeof scope !== 'string' || !['build:read', 'build:upload', 'listing:write', 'data:read', 'data:write', 'data:configure'].includes(scope)) || new Set(parsed.scopes).size !== parsed.scopes.length)) {
+  if (parsed.scopes !== undefined && (!Array.isArray(parsed.scopes) || parsed.scopes.length > 7 || parsed.scopes.some(scope => typeof scope !== 'string' || !['build:read', 'build:upload', 'listing:write', 'data:read', 'data:write', 'data:configure', 'token:configure'].includes(scope)) || new Set(parsed.scopes).size !== parsed.scopes.length)) {
     throw new PublishCliError('The credentials file has invalid scopes.');
   }
   const config = {
@@ -444,6 +447,8 @@ export function parseCommand(argv: string[]): Command {
   }
 
   if (positional[0] === 'database') return parseDatabaseCommand(positional, credentialsPath);
+
+  if (positional[0] === 'token') return parseTokenCommand(positional, credentialsPath);
 
   if (positional[0] === 'listing' || positional[0] === 'image') {
     return parseListingCommand(positional, credentialsPath);
@@ -599,6 +604,12 @@ export async function main(
 
     if (command.kind === 'database') {
       const response = await runDatabaseCommand(config, command, fetchImplementation);
+      output.log(redact(JSON.stringify(response), publishKey));
+      return 0;
+    }
+
+    if (command.kind === 'token') {
+      const response = await runTokenCommand(config, command, fetchImplementation);
       output.log(redact(JSON.stringify(response), publishKey));
       return 0;
     }

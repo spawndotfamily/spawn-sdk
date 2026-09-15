@@ -11,9 +11,9 @@ One prompt can prepare, test and upload a **private preview**. You approve the p
 | Player saves | Nested JSON inventories, progress and settings; version checks | Use load/save/listSaves/remove. Read [game data](game-data.md) for limits and conflict handling. |
 | Leaderboards | Opt-in game-scoped reads; best/latest/every-run views | Use submitScore with a retry ID and getLeaderboard. Ask the creator for the sharing policy, then use the scoped database CLI. Scores remain unverified. |
 | Creator database | Inspect players and score records; read, set and remove nested player JSON | Use [creator database CLI](creator-database.md) from the private agent workspace. Versioned changes; no token authority. |
-| Optional TEST entry | Fixed 10 TEST request with Spawn confirmation | Use requestPayment('entry'); handle cancel, failure and uncertain outcomes. Never charge on startup. |
+| Optional entry payment | One token and default amount selected in the project listing, or fixed 10 TEST when none is configured | Ask for the token contract address/name and entry amount. Search and configure an admitted asset with the scoped CLI; use requestPayment('entry') for the listing default. Never charge on startup. |
 | Creator pools | Dashboard top-ups, withdrawals and manual rewards | Current incoming platform fee is 5%; outgoing rewards have no extra platform fee. Pool balance is not a guaranteed prize. No general browser payout API. |
-| Listing and images | Name, description, supported details and image edits for this game | Use scoped CLI listing/image commands and expectedVersion. No ownership, approval or price changes. |
+| Listing and images | Name, description, supported details and image edits for this game | Use scoped CLI listing/image commands and expectedVersion. No ownership, approval, platform-fee or other-project pricing changes. |
 | Local testing | Fake players, balances, pool controls and receipts | Use spawn-dev on the finished folder. Keep test accounts out of shipped game code. |
 | Multiplayer | Registered integration with a creator-operated server | Read multiplayer/startup documentation. Registration is not self-service; server authority and settlement are separate from a browser handshake. |
 | Friends and chat | Platform UI | No game SDK access to private chat, friends administration or moderation. |
@@ -49,11 +49,11 @@ The upload validator checks build structure, supported files, limits and paths. 
 
 ## Labels and money
 
-**Private preview / Published game** describes who can access a release. **Local fake player / connected Spawn account** describes identity. **TEST** describes the currency. An approved game still uses TEST services today; `environment: 'sandbox'` is not a publication-status flag and must never switch on fake identity in a hosted game.
+**Private preview / Published game** describes who can access a release. **Local fake player / connected Spawn account** describes identity. **TEST** describes the historical currency. An approved game can use historical TEST services or a configured non-redeemable testnet token; `environment: 'sandbox'` is not a publication-status flag and must never switch on fake identity in a hosted game.
 
 Before automatic browser-score rewards, tell the creator: “Players can fake wins and scores in a browser-only game. Automatically paying those results could drain your entire pool. A payment proves payment, not fair play.” Keep automatic rewards off unless a documented trusted server validation and settlement contract is enabled. Memory scrambling, obfuscation and domain checks do not make a browser authoritative.
 
-Spawn owns payment confirmation outside the game. A successful entry receipt is `{ id, intentId, amount: 10, asset: 'TEST', environment: 'sandbox', status: 'paid' }`. Cancellation rejects the request. Do not duplicate a charge after an uncertain response or treat a local flag as payment proof.
+Spawn owns payment confirmation outside the game. `requestPayment('entry')` uses the listing-selected token and default amount when configured, or returns the existing fixed 10 TEST receipt otherwise. An explicit `requestTokenPayment({ amount, item })` can request a game-defined amount using that same listing-selected asset; it never accepts a contract address. Cancellation rejects the request. Do not duplicate a payment after an uncertain response or treat a local flag as payment proof. Token entry is limited to Spawn-admitted assets on chain ID 46630 testnet; it does not enable real-money deposits or redeemable payouts.
 
 Current public accounting is at https://spawn.family/transparency. It separates aggregate TEST accounting from unavailable real reserves. Matching totals are useful checks, not proof that every transaction is authorized. Read the installed security documentation; never invent missing methods or weaken the iframe, origin, credential or approval boundaries to make an integration pass.
 

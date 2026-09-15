@@ -62,6 +62,22 @@ export type SpawnTestPayment = {
   status: 'paid';
 };
 
+/** Receipt for a project-configured testnet token entry, after the Spawn confirmation flow. */
+export type SpawnTokenPaymentReceipt = {
+  id: string;
+  assetId: string;
+  /** Exact ERC-20 base units. Never convert this to a JavaScript number. */
+  amount: string;
+  projectId: string;
+  status: 'paid';
+};
+export type SpawnTokenPaymentOptions = {
+  /** Optional human-readable decimal amount in the listing's configured token. */
+  amount?: string;
+  /** Optional 1–80 character item label; the listing still selects the token asset. */
+  item?: string;
+};
+
 export type SpawnGameClient = {
   identity(): Promise<SpawnGameIdentity>;
   getLeaderboard(query?: LeaderboardQuery): Promise<LeaderboardPage>;
@@ -70,7 +86,8 @@ export type SpawnGameClient = {
   load<T>(keyOrRequest: string | { key: string }): Promise<Save<T> | null>;
   save<T>(keyOrRequest: string | { key: string; value: T; expectedVersion: number }, value?: T, expectedVersion?: number): Promise<Save<T>>;
   submitScore(scoreOrRequest: number | { score: number; details?: Record<string, unknown>; submissionId?: string }, details?: Record<string, unknown>): Promise<SpawnScoreSubmission>;
-  requestPayment(productOrRequest: 'entry' | { productId: 'entry' }): Promise<SpawnTestPayment>;
+  requestPayment(productOrRequest: 'entry' | { productId: 'entry' }): Promise<SpawnTestPayment | SpawnTokenPaymentReceipt>;
+  requestTokenPayment(options?: SpawnTokenPaymentOptions): Promise<SpawnTokenPaymentReceipt>;
   dispose(): void;
 };
 
@@ -78,6 +95,9 @@ export const MAX_GAME_BRIDGE_OUTSTANDING = 20;
 const GAME_BRIDGE_VERSION = 1;
 const GAME_BRIDGE_TIMEOUT_MS = 15_000;
 const GAME_BRIDGE_PAYMENT_TIMEOUT_MS = 300_000;
+const TOKEN_PAYMENT_AMOUNT_PATTERN = /^(?:0|[1-9][0-9]*)(?:\.[0-9]+)?$/;
+const TOKEN_PAYMENT_ITEM_MAX_LENGTH = 80;
+const TOKEN_RECEIPT_VERSION = 1;
 const PUBLIC_PROFILE_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const DOCUMENT_TOKEN_PATTERN = /^\/build\/([A-Za-z0-9_-]{43})\//;
 const BRIDGE_NONCE_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -191,6 +211,21 @@ function safePayment(value: unknown): value is SpawnTestPayment {
     value.amount === 10 &&
     value.asset === 'TEST' &&
     value.environment === 'sandbox' &&
+    value.status === 'paid';
+}
+
+function safeTokenPayment(value: unknown, platformOrigin: string): value is SpawnTokenPaymentReceipt {
+  if (!isObject(value) || !exactObjectKeys(value, ['id', 'assetId', 'amount', 'projectId', 'status'])) return false;
+  if (typeof value.id !== 'string' || value.id.length === 0 || value.id.length > 128 || /[\u0000-\u001f\u007f]/.test(value.id)) return false;
+  if (typeof value.assetId !== 'string' || !/^erc20:(?:46630|31337):0x[a-f0-9]{40}$/.test(value.assetId)) return false;
+  if (value.assetId.startsWith('erc20:31337:')) {
+    const hostname = new URL(platformOrigin).hostname.toLowerCase();
+    if (!['localhost', '127.0.0.1', '[::1]', '::1'].includes(hostname)) return false;
+  }
+  if (typeof value.amount !== 'string' || !/^[1-9][0-9]*$/.test(value.amount) || value.amount.length > 78) return false;
+  if (BigInt(value.amount) > (1n << 256n) - 1n) return false;
+  return typeof value.projectId === 'string' &&
+    PUBLIC_PROFILE_ID_PATTERN.test(value.projectId) &&
     value.status === 'paid';
 }
 
@@ -490,9 +525,34 @@ export function createSpawnGameClient(options: { platformOrigin?: string } = {})
         (isObject(productOrRequest) && productOrRequest.productId === 'entry' && exactObjectKeys(productOrRequest, ['productId']))
         ? 'entry'
         : undefined;
-      if (!productId) return Promise.reject(new Error('Only the entry test product is available.'));
-      return request<unknown>('requestPayment', { productId }, GAME_BRIDGE_PAYMENT_TIMEOUT_MS).then((value) => {
-        if (!safePayment(value)) throw new Error('Spawn bridge returned an invalid test payment.');
+      if (!productId) return Promise.reject(new Error('Only the entry payment is available.'));
+      return request<unknown>('requestPayment', { productId, tokenReceiptVersion: TOKEN_RECEIPT_VERSION }, GAME_BRIDGE_PAYMENT_TIMEOUT_MS).then((value) => {
+        if (!safePayment(value) && !safeTokenPayment(value, targetOrigin)) throw new Error('Spawn bridge returned an invalid payment receipt.');
+        return value;
+      });
+    },
+    requestTokenPayment: (options?: SpawnTokenPaymentOptions) => {
+      const input = options === undefined ? {} : options;
+      if (!isObject(input) || Array.isArray(input) || !exactObjectKeys(input, [], ['amount', 'item'])) return Promise.reject(new Error('Token payment accepts only an optional amount and item label.'));
+      let payload: { amount?: string; item?: string };
+      try {
+        const amount = input.amount;
+        const item = input.item;
+        if (amount !== undefined && (typeof amount !== 'string' || amount.length > 512 || !TOKEN_PAYMENT_AMOUNT_PATTERN.test(amount))) throw new Error('Token payment amount must be a decimal string without a sign or exponent.');
+        if (typeof amount === 'string') {
+          const [whole, fraction = ''] = amount.split('.');
+          if (BigInt(whole) === 0n && !/[1-9]/.test(fraction)) throw new Error('Token payment amount must be greater than zero.');
+        }
+        if (item !== undefined && (typeof item !== 'string' || item.trim() === '' || item.length > TOKEN_PAYMENT_ITEM_MAX_LENGTH || /[\u0000-\u001f\u007f]/.test(item))) throw new Error(`Token payment item label must contain 1–${TOKEN_PAYMENT_ITEM_MAX_LENGTH} printable characters.`);
+        payload = {
+          ...(amount === undefined ? {} : { amount: amount as string }),
+          ...(item === undefined ? {} : { item: item as string }),
+        };
+      } catch (error) {
+        return Promise.reject(error instanceof Error ? error : new Error('Invalid token payment request.'));
+      }
+      return request<unknown>('requestTokenPayment', payload, GAME_BRIDGE_PAYMENT_TIMEOUT_MS).then((value) => {
+        if (!safeTokenPayment(value, targetOrigin)) throw new Error('Spawn bridge returned an invalid token payment receipt.');
         return value;
       });
     },
