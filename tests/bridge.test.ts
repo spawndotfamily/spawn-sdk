@@ -4,6 +4,7 @@ import * as sdk from '../src/index.ts';
 
 const PLATFORM_ORIGIN = 'https://spawn.example.test';
 const DOCUMENT_TOKEN = 'a'.repeat(43);
+const TOKEN_REQUEST_ID = '123e4567-e89b-42d3-a456-426614174000';
 
 type MessageEventLike = {
   source: unknown;
@@ -548,7 +549,6 @@ test('entry payment accepts the listing token receipt and explicit token request
     const request = client.requestTokenPayment({ amount: '0.000001', item: 'Entry' });
     const bridgeRequest = port.calls.at(-1)!;
     assert.equal(bridgeRequest.method, 'requestTokenPayment');
-    assert.deepEqual(bridgeRequest.payload, { amount: '0.000001', item: 'Entry' });
     port.emit(responseFor(bridgeRequest, {
       id: 'payment_1',
       assetId: 'erc20:46630:0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
@@ -563,15 +563,18 @@ test('entry payment accepts the listing token receipt and explicit token request
       projectId: '123e4567-e89b-12d3-a456-426614174000',
       status: 'paid',
     });
+    const generatedTokenRequestId = (bridgeRequest.payload as { requestId?: unknown }).requestId;
+    assert.equal(typeof generatedTokenRequestId, 'string');
+    assert.match(generatedTokenRequestId as string, /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i);
+    assert.deepEqual({ ...(bridgeRequest.payload as Record<string, unknown>), requestId: undefined }, { amount: '0.000001', item: 'Entry', requestId: undefined });
 
     const callsBeforeInvalidOptions = port.calls.length;
     await assert.rejects(client.requestTokenPayment({ amount: 0.25 as unknown as string }), /decimal string/i);
-    await assert.rejects(client.requestTokenPayment({ assetId: 'erc20:46630:0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa' } as unknown as sdk.SpawnTokenPaymentOptions), /only an optional amount and item/i);
+    await assert.rejects(client.requestTokenPayment({ assetId: 'erc20:46630:0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa' } as unknown as sdk.SpawnTokenPaymentOptions), /only an optional amount.*item/i);
     assert.equal(port.calls.length, callsBeforeInvalidOptions, 'invalid token options must not reach Spawn');
 
     const empty = client.requestTokenPayment();
     const emptyRequest = port.calls.at(-1)!;
-    assert.deepEqual(emptyRequest.payload, {});
     port.emit(responseFor(emptyRequest, {
       id: 'payment_3',
       assetId: 'erc20:46630:0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
@@ -580,6 +583,9 @@ test('entry payment accepts the listing token receipt and explicit token request
       status: 'paid',
     }));
     await empty;
+    const emptyRequestId = (emptyRequest.payload as { requestId?: unknown }).requestId;
+    assert.equal(typeof emptyRequestId, 'string');
+    assert.match(emptyRequestId as string, /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i);
 
     const invalid = client.requestTokenPayment();
     const invalidRequest = port.calls.at(-1)!;
@@ -617,7 +623,6 @@ test('enforces the hosted 80-character token item limit while preserving the bou
 
     const accepted = client.requestTokenPayment({ item: 'x'.repeat(80) });
     const acceptedRequest = port.calls.at(-1)!;
-    assert.deepEqual(acceptedRequest.payload, { item: 'x'.repeat(80) });
     port.emit(responseFor(acceptedRequest, {
       id: 'payment_item_80',
       assetId: 'erc20:46630:0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
@@ -626,6 +631,10 @@ test('enforces the hosted 80-character token item limit while preserving the bou
       status: 'paid',
     }));
     await accepted;
+    const acceptedPayload = acceptedRequest.payload as { item?: unknown; requestId?: unknown };
+    assert.equal(acceptedPayload.item, 'x'.repeat(80));
+    assert.equal(typeof acceptedPayload.requestId, 'string');
+    assert.match(acceptedPayload.requestId as string, /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i);
 
     const callsBeforeInvalid = port.calls.length;
     const rejected = client.requestTokenPayment({ item: 'x'.repeat(81) });
@@ -640,6 +649,36 @@ test('enforces the hosted 80-character token item limit while preserving the bou
       }));
     }
     await assert.rejects(rejected, /80|item|label/i);
+    assert.equal(port.calls.length, callsBeforeInvalid);
+    client.dispose();
+  } finally {
+    surface.restore();
+  }
+});
+
+test('token payment accepts a stable caller request ID and rejects malformed IDs before bridge dispatch', async () => {
+  const surface = installEmbeddedWindow();
+  try {
+    const client = sdk.createSpawnGameClient({ platformOrigin: PLATFORM_ORIGIN });
+    const port = makePort();
+    surface.emit({ source: surface.parent, origin: PLATFORM_ORIGIN, data: { type: 'spawn:connected', version: 1 }, ports: [port] });
+
+    const payment = client.requestTokenPayment({ amount: '0.000001', item: 'Entry', requestId: TOKEN_REQUEST_ID });
+    const request = port.calls.at(-1);
+    if (request?.method === 'requestTokenPayment') {
+      assert.deepEqual(request.payload, { amount: '0.000001', item: 'Entry', requestId: TOKEN_REQUEST_ID });
+      port.emit(responseFor(request, {
+        id: 'payment_request_id',
+        assetId: 'erc20:46630:0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+        amount: '1',
+        projectId: '123e4567-e89b-12d3-a456-426614174000',
+        status: 'paid',
+      }));
+    }
+    await payment;
+
+    const callsBeforeInvalid = port.calls.length;
+    await assert.rejects(client.requestTokenPayment({ requestId: 'not-a-uuid' }), /requestId|UUID/i);
     assert.equal(port.calls.length, callsBeforeInvalid);
     client.dispose();
   } finally {

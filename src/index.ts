@@ -76,6 +76,8 @@ export type SpawnTokenPaymentOptions = {
   amount?: string;
   /** Optional 1–80 character item label; the listing still selects the token asset. */
   item?: string;
+  /** Stable UUID for retrying the same payment after an uncertain result. */
+  requestId?: string;
 };
 
 export type SpawnGameClient = {
@@ -533,20 +535,23 @@ export function createSpawnGameClient(options: { platformOrigin?: string } = {})
     },
     requestTokenPayment: (options?: SpawnTokenPaymentOptions) => {
       const input = options === undefined ? {} : options;
-      if (!isObject(input) || Array.isArray(input) || !exactObjectKeys(input, [], ['amount', 'item'])) return Promise.reject(new Error('Token payment accepts only an optional amount and item label.'));
-      let payload: { amount?: string; item?: string };
+      if (!isObject(input) || Array.isArray(input) || !exactObjectKeys(input, [], ['amount', 'item', 'requestId'])) return Promise.reject(new Error('Token payment accepts only an optional amount, item label and request ID.'));
+      let payload: { amount?: string; item?: string; requestId: string };
       try {
         const amount = input.amount;
         const item = input.item;
+        const requestId = input.requestId;
         if (amount !== undefined && (typeof amount !== 'string' || amount.length > 512 || !TOKEN_PAYMENT_AMOUNT_PATTERN.test(amount))) throw new Error('Token payment amount must be a decimal string without a sign or exponent.');
         if (typeof amount === 'string') {
           const [whole, fraction = ''] = amount.split('.');
           if (BigInt(whole) === 0n && !/[1-9]/.test(fraction)) throw new Error('Token payment amount must be greater than zero.');
         }
         if (item !== undefined && (typeof item !== 'string' || item.trim() === '' || item.length > TOKEN_PAYMENT_ITEM_MAX_LENGTH || /[\u0000-\u001f\u007f]/.test(item))) throw new Error(`Token payment item label must contain 1–${TOKEN_PAYMENT_ITEM_MAX_LENGTH} printable characters.`);
+        if (requestId !== undefined && (typeof requestId !== 'string' || !BRIDGE_NONCE_PATTERN.test(requestId))) throw new Error('Token payment requestId must be a UUID.');
         payload = {
           ...(amount === undefined ? {} : { amount: amount as string }),
           ...(item === undefined ? {} : { item: item as string }),
+          requestId: requestId === undefined ? bridgeRequestId() : requestId,
         };
       } catch (error) {
         return Promise.reject(error instanceof Error ? error : new Error('Invalid token payment request.'));

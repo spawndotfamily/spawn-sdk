@@ -17,6 +17,7 @@
 - Games should keep token selection in the Listing and call `requestTokenPayment` with only an optional exact human-readable decimal amount and item label. Games without a configured token continue using the historical TEST receipt contract.
 - `requestPayment` now has a TypeScript union return (`SpawnTestPayment | SpawnTokenPaymentReceipt`). Narrow with `'assetId' in receipt` before reading token fields, or use the TEST branch for `asset`, `intentId` and numeric `amount`. The historical TEST receipt remains available at runtime, but the union is not source-compatible with code that assumes the old TEST-only return type.
 - Republish a game with SDK 0.3.0 before selecting a Listing token. `requestPayment` advertises token-receipt validation before charging; older SDKs can reject a configured token receipt after payment. Existing TEST hosts ignore this marker and keep the legacy fallback.
+- `requestTokenPayment` accepts an optional UUID `requestId`; reuse the same ID, amount and item when retrying an uncertain result, and use a new ID for a deliberate purchase. The SDK generates a UUID when omitted.
 
 ## 0.2.14 — 2026-09-14
 

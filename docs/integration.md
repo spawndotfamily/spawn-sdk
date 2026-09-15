@@ -48,6 +48,8 @@ Spawn stores one active entry token and a default amount in the project's listin
 
 `requestPayment('entry')` uses that listing asset and default amount automatically; without a configured token it retains the fixed 10 TEST fallback. A game can instead call `requestTokenPayment({ amount: '0.25', item: 'Entry' })` for a game-defined amount or item. `amount` is an exact human-readable decimal string, never a JavaScript number; an optional item label is 1–80 printable characters. Spawn resolves the listing asset, converts the amount with its decimals and owns the quote and player confirmation. Both methods require a signed-in player, so guests keep free play and cannot make token payments.
 
+For a custom token payment, the SDK supplies a UUID `requestId` when one is omitted. If a timeout or other uncertain result may have left a payment recorded, retry the same request with the same `requestId`, amount and item so Spawn can reuse the durable quote; choose a new UUID for a deliberate new purchase.
+
 The TEST fallback receipt remains `{ id, intentId, amount: 10, asset: 'TEST', environment: 'sandbox', status: 'paid' }`. A configured token receipt is `{ id, assetId, amount, projectId, status: 'paid' }`, with `amount` as an integer base-unit string. Do not convert receipt amounts to floating point or treat a receipt as server authorization for rewards.
 
 ## Spawn-owned entry payment flow
