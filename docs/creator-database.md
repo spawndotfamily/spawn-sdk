@@ -2,7 +2,7 @@
 
 Available with SDK **0.2.11**, the matching Spawn platform deployment and a newly downloaded creator credential. Older credentials keep their original permissions. Download a new file in **Publish → AI agent**, keep it outside the repository/build, and never paste its key into chat. Scopes are enforced by Spawn, not by editing the JSON file.
 
-The browser SDK still uses `load/save/listSaves/remove` for its connected player's records and `submitScore/getLeaderboard` for scores. These CLI tools run only in the creator's private development workspace. They never belong in browser code. They cannot transfer tokens, change ownership, access another game or approve releases.
+The browser SDK still uses `load/save/listSaves/remove` for its connected player's records and `submitScore/getLeaderboard` for scores. These CLI tools run only in the creator's private development workspace. They never belong in browser code. They cannot transfer tokens, change ownership, access another game or publish releases.
 
 ## Inspect and edit
 
@@ -70,6 +70,6 @@ npx --no-install spawn-publish database remove-score <score-id> ./remove.json --
 
 `edit.json` contains exactly `playerId`, `score`, `expectedVersion`; `remove.json` contains exactly `playerId`, `expectedVersion`. Read the current version from `scores` first. Add-score retries with the same UUID and payload return the existing record; a changed payload conflicts. Creator-added records are marked `source: "creator"`, unpaid and unverified. They do not grant payment eligibility or authorize rewards. These commands can manage an existing game player's records; they cannot enroll an arbitrary other account. Never use someone else's ID as a pretend local identity.
 
-These commands operate on the actual game database, so ask before changing existing player records and remove disposable test runs intentionally. `spawn-dev` remains a separate, credential-free simulator with Alice/Bob and fixed TEST payments; it does not silently read or overwrite hosted data or emulate Listing-configured token purchases. Use CLI reads to inspect real hosted records locally, the simulator to test browser integration, and a private preview to verify the actual hosted bridge. Private previews do not require public approval.
+These commands operate on the actual game database, so ask before changing existing player records and remove disposable test runs intentionally. `spawn-dev` remains a separate, credential-free simulator with Alice/Bob and fixed TEST payments; it does not silently read or overwrite hosted data or emulate Listing-configured token purchases. Use CLI reads to inspect real hosted records locally, the simulator to test browser integration, and a private preview to verify the actual hosted bridge. Private previews do not require publication.
 
 **Two optional ways to store results:** Player data holds current state (level, inventory, experience, or your own score field). Score records hold individual runs and support best/latest/all leaderboard views. Use either or both; using general player data does not require score submission. Names can change; stable player and project IDs cannot. Their similar UUID format does not make them interchangeable.

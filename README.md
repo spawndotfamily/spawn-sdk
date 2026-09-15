@@ -17,7 +17,7 @@ Keep your game, engine, and build tools. Use the features you need.
 | Creator database | Read and manage your game's player data from your computer, even before the first upload. |
 | Listing access and optional payments | Let players use a free Listing or confirm its one-time listing-selected testnet access purchase; separate optional payments use explicit amounts through Spawn's shared overlay. |
 | Local testing | Try fake accounts, saves, scores, fixed TEST payments, and creator-pool controls before uploading. |
-| Publishing | Upload your browser build and manage its listing and images. |
+| Publishing | Upload a private preview, inspect its automated checks, and explicitly publish a tested release. |
 
 The local simulator and unconfigured entry fallback use fixed TEST tokens with no cash value; the local simulator does not emulate Listing-configured token purchases. A hosted configured game entry can use one Spawn-admitted asset on chain ID 46630 testnet; Spawn selects the asset from the game's listing settings and owns confirmation. Real-money deposits and redeemable payouts are not enabled.
 
@@ -25,9 +25,9 @@ The local simulator and unconfigured entry fallback use fixed TEST tokens with n
 
 1. **Open your game workspace on Spawn.** Under Publish, download the credentials and copy your game's agent prompt.
 2. **Paste the prompt into your coding agent with your game project open.** The agent reads the SDK guides, helps connect the features you choose, builds the game, tests it locally, and uploads a private preview.
-3. **Play the preview and submit it for review.** Spawn reviews your first listing before the game becomes discoverable. Later updates still need your approval in Releases.
+3. **Play and publish deliberately.** Wait for the automated malware check, play the exact preview, then you or an explicitly authorized agent can publish it with the release command. Uploading alone never publishes a game, and no first-listing staff review is required.
 
-Your credentials stay on your computer, outside your source repository and uploaded build. They give the agent scoped access to this game; they cannot approve releases or move tokens. You do not need a GitHub repository.
+Your credentials stay on your computer, outside your source repository and uploaded build. They give the agent scoped access to this game; publication still requires an explicit release command and the platform's owner, scan, and suspension gates. They cannot change ownership or move tokens. You do not need a GitHub repository.
 
 **For coding agents:** start with [AGENTS.md](AGENTS.md). It links to the integration checklist, feature-specific instructions, and troubleshooting steps.
 
@@ -54,9 +54,11 @@ When you're ready, upload the same folder using the credentials you downloaded f
 
 ```sh
 npx --no-install spawn-publish publish ./dist --credentials /path/to/spawn-project.json
+npx --no-install spawn-publish status <release-id> --credentials /path/to/spawn-project.json
+npx --no-install spawn-publish release --release <release-id> --creator-confirmation --credentials /path/to/spawn-project.json
 ```
 
-Replace the example paths with your build folder and credentials file. The command returns a private preview link. Open it, test the game, then submit it from Releases.
+Replace the example paths with your build folder and credentials file. Upload returns a private preview link and release ID. Poll status until the automated malware check passes, open the exact preview and play-test it, then run the release command when the creator explicitly requests publication. The command prints the release status and scan result; a legacy platform may return `pending_review`.
 
 ## Which games can I upload?
 

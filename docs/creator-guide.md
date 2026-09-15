@@ -1,6 +1,6 @@
 # Bring an existing game to Spawn
 
-One prompt can prepare, test and upload a **private preview**. You approve the preview; Spawn reviews the first listing before players can discover it. An upload alone is not publication.
+One prompt can prepare, test and upload a **private preview**. After the automated malware check passes and the exact preview is play-tested, the creator can explicitly publish it or ask an authorized agent to publish it. An upload alone is not publication.
 
 ## Choose only the features your game needs
 
@@ -27,8 +27,8 @@ These are choices, not a checklist of features to add. Preserve existing gamepla
 2. **Install.** Run `npm install --save-exact --ignore-scripts @spawndotfamily/sdk`. Read the installed AGENTS.md, docs/creator-checklist.md and only the relevant integration sections. No separate SDK archive, source checkout or GitHub connection is needed.
 3. **Connect.** Use the existing browser client and launcher identity. Use the shared startup controller for account-dependent play. Keep secret creator credentials outside source and the browser build. The downloaded file expires after 24 hours; ask for its saved path, never its secret in chat.
 4. **Test.** Build into any folder, then run `npx --no-install spawn-publish check <folder>` and `npx --no-install spawn-dev <folder>`. Play a real start → gameplay → finish/retry loop. Check input, missing assets, console errors, reconnect, saves and any cancel/confirmed TEST payment. Return evidence and clearly state anything you could not test.
-5. **Upload.** Run `npx --no-install spawn-publish publish <folder> --credentials <private-file-path>`. Return the actual preview link and release ID. If it fails, preserve the build and explain the error; GitHub import or Manual upload can send the same build, but are not guaranteed to bypass network problems.
-6. **Human approval.** The creator plays the exact preview and submits it in Releases. Spawn reviews the first listing. Agents cannot approve, list or turn on rewards with a publishing credential.
+5. **Upload and poll.** Run `npx --no-install spawn-publish publish <folder> --credentials <private-file-path>`, then poll with `npx --no-install spawn-publish status <release-id> --credentials <private-file-path>`. Return the actual preview link, release ID, automated check status, tests and limitations. If upload fails, preserve the build and explain the error; GitHub import or Manual upload can send the same build, but are not guaranteed to bypass network problems.
+6. **Publish only after testing.** Once the automated malware check passes, play the exact preview. If the creator explicitly requests publication, run `npx --no-install spawn-publish release --release <release-id> --creator-confirmation --credentials <private-file-path>`. The platform rechecks the owner credential, release scan and suspension state. The agent must never publish merely because upload succeeded or enable rewards automatically.
 
 On Windows, the bundled CLI can also be run as `node node_modules/@spawndotfamily/sdk/dist/cli/run.js` with the same arguments. Keep commands and file paths appropriate for the creator's system.
 
@@ -45,11 +45,11 @@ Include the scripts, images, sounds and other browser assets with their relative
 
 ## What the checks prove
 
-The upload validator checks build structure, supported files, limits and paths. This catches packaging problems; it does **not** prove playability, honesty or security. The agent should use a browser to test gameplay and record startup errors. The creator and first-listing reviewer still play the exact build. Never invent a successful play test or call a structural check an anti-cheat review.
+The upload validator checks build structure, supported files, limits and paths. Hosted status also reports the automated malware check for the exact release; this catches detected files but does **not** prove playability, honesty or complete security. The agent should use a browser to test gameplay and record startup errors. Never invent a successful play test or call a structural check an anti-cheat review. A passed check does not publish automatically.
 
 ## Labels and money
 
-**Private preview / Published game** describes who can access a release. **Local fake player / connected Spawn account** describes identity. **TEST** describes the historical currency. An approved game can use historical TEST services or a configured non-redeemable testnet token; `environment: 'sandbox'` is not a publication-status flag and must never switch on fake identity in a hosted game.
+**Private preview / Published game** describes who can access a release. **Local fake player / connected Spawn account** describes identity. **TEST** describes the historical currency. A published game can use historical TEST services or a configured non-redeemable testnet token; `environment: 'sandbox'` is not a publication-status flag and must never switch on fake identity in a hosted game.
 
 Before automatic browser-score rewards, tell the creator: “Players can fake wins and scores in a browser-only game. Automatically paying those results could drain your entire pool. A payment proves payment, not fair play.” Keep automatic rewards off unless a documented trusted server validation and settlement contract is enabled. Memory scrambling, obfuscation and domain checks do not make a browser authoritative.
 

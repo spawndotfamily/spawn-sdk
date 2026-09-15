@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.4.1 — 2026-09-16
+
+### Added
+- Explicit `spawn-publish release --release <release-id> --creator-confirmation` (also available as `spawn-publish publish --release ...`) publishes an existing, tested release through the owner-scoped platform endpoint.
+- Release status output includes the automated malware-check metadata and the next action needed before publication.
+
+### Changed
+- Uploading a browser build remains preview-only; the CLI never publishes it implicitly. Publication sends exactly `{ "played": true }` after the creator explicitly confirms the tested preview.
+- Credential parsing accepts the new `build:publish` scope metadata while leaving authorization to the platform, so existing active project credentials remain compatible.
+- Creator guidance now describes owner-selected publication after automated checks and play-testing; no first-listing staff review is required.
+
+### Upgrade notes
+- Upload as before, poll `spawn-publish status <release-id>`, then run `spawn-publish release --release <release-id> --creator-confirmation` when the exact preview has passed its automated check and has been play-tested. A legacy platform may return `pending_review`; inspect the returned status and follow its platform workflow.
+- Publication remains project-scoped and server-gated by the exact release scan, owner credential, and suspension state. Keep credentials outside browser builds and never treat the local scope list as authority.
+
 ## 0.4.0 — 2026-09-15
 
 ### Added

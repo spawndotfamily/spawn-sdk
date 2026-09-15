@@ -11,8 +11,10 @@ import {
   formatReleaseSummary,
   getReleaseStatus,
   main,
+  parseCommand,
   readConfig,
   readCredentialsFile,
+  publishRelease,
   uploadRelease,
 } from '../src/cli/index.ts';
 
@@ -215,6 +217,96 @@ test('uploads and checks releases with bearer auth and prints only the safe summ
   assert.equal(calls[1].init?.method, 'GET');
   assert.equal(formatReleaseSummary(created, PUBLISH_KEY).includes(PUBLISH_KEY), false);
   assert.match(formatReleaseSummary(created, PUBLISH_KEY), /release-1/);
+});
+
+test('publishes an existing release only through the explicit creator confirmation command', async () => {
+  const calls: Array<{ input: string | URL; init?: RequestInit }> = [];
+  const fetchMock = async (input: string | URL, init?: RequestInit) => {
+    calls.push({ input, init });
+    return Response.json({
+      id: 'release-1',
+      status: 'published',
+      scan: { status: 'passed', filesChecked: 1, filesTotal: 1 },
+    });
+  };
+  const config = { apiUrl: API_URL, projectId: PROJECT_ID, publishKey: PUBLISH_KEY };
+
+  assert.deepEqual(parseCommand([
+    'release',
+    '--release',
+    'release-1',
+    '--creator-confirmation',
+    '--credentials',
+    '/tmp/credentials.json',
+  ]), {
+    kind: 'release',
+    releaseId: 'release-1',
+    creatorConfirmation: true,
+    credentialsPath: '/tmp/credentials.json',
+  });
+  assert.deepEqual(parseCommand([
+    'publish',
+    '--release=release-1',
+    '--creator-confirmation',
+  ]), {
+    kind: 'release',
+    releaseId: 'release-1',
+    creatorConfirmation: true,
+    credentialsPath: undefined,
+  });
+  assert.throws(
+    () => parseCommand(['release', '--release', 'release-1']),
+    /creator[- ]confirmation/i,
+  );
+
+  const result = await publishRelease(config, 'release-1', fetchMock);
+  assert.equal(result.status, 'published');
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].input, `${API_URL}/api/v1/publish/${PROJECT_ID}/releases/release-1/publish`);
+  assert.equal(calls[0].init?.method, 'POST');
+  assert.equal(new Headers(calls[0].init?.headers).get('authorization'), `Bearer ${PUBLISH_KEY}`);
+  assert.deepEqual(JSON.parse(String(calls[0].init?.body)), { played: true });
+
+  calls.length = 0;
+  const output: string[] = [];
+  assert.equal(await main(
+    ['release', '--release', 'release-1', '--creator-confirmation'],
+    {
+      SPAWN_API_URL: API_URL,
+      SPAWN_PROJECT_ID: PROJECT_ID,
+      SPAWN_PUBLISH_KEY: PUBLISH_KEY,
+    },
+    fetchMock,
+    { log: (message) => output.push(message), error: (message) => output.push(`error:${message}`) },
+  ), 0);
+  assert.equal(calls.length, 1);
+  assert.equal(output.length, 1);
+  assert.match(output[0], /published/);
+});
+
+test('accepts the new build:publish credential scope without making it a client-side authorization gate', async () => {
+  await withTempDirectory(async (directory) => {
+    const credentialsPath = join(directory, 'spawn-project-credentials.json');
+    await writeFile(credentialsPath, JSON.stringify({
+      platformOrigin: API_URL,
+      projectId: PROJECT_ID,
+      publishKey: PUBLISH_KEY,
+      expiresAt: Date.now() + 60_000,
+      scopes: ['build:read', 'build:upload', 'build:publish'],
+    }));
+    const config = await readCredentialsFile(credentialsPath);
+    assert.deepEqual(config.scopes, ['build:read', 'build:upload', 'build:publish']);
+  });
+});
+
+test('status reports the automated check and the next explicit publish action', () => {
+  const summary = JSON.parse(formatReleaseSummary({
+    id: 'release-1',
+    status: 'preview',
+    scan: { status: 'passed', filesChecked: 1, filesTotal: 1 },
+  }, PUBLISH_KEY));
+  assert.equal(summary.scan.status, 'passed');
+  assert.match(summary.next, /spawn-publish release --release release-1 --creator-confirmation/);
 });
 
 test('never prints a publishing key from an HTTP error response', async () => {

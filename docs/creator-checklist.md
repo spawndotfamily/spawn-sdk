@@ -42,16 +42,17 @@ Bundle the SDK through the game’s bundler; never vendor only its entry file. R
 
 Run the game's meaningful tests and production build. Validate with `spawn-publish check ./dist`, then follow [local testing](testing.md) using `spawn-dev ./dist`; no real account or credentials belong in that launcher. For TEST-enabled games, test confirmed entry funding the pool, manual rewards to another fake player, empty-pool rejection and reset in its creator panel. Keep the same browser client for the private Spawn preview; never add a silent local-account fallback. Check the real Spawn iframe flow: correct account, clear pending/failure/success states, closing and reopening, save conflicts when saves are used, and optional TEST cancellation when included. For multiplayer, test latency/disconnect recovery, duplicate connections and server-side authority. Report what was tested locally versus what still requires platform configuration. Recommend a security review when available, but obtain consent before any external source upload and keep findings private. A successful scan or test suite does not guarantee the absence of cheats.
 
-## 5. Return a private preview, then stop
+## 5. Return a private preview, then publish only when requested
 
 Use the installed executable, not a command that silently downloads a different package:
 
 ```sh
 ./node_modules/.bin/spawn-publish publish ./dist --credentials /path/to/spawn-project-<projectId>.json
 ./node_modules/.bin/spawn-publish status <release-id> --credentials /path/to/spawn-project-<projectId>.json
+./node_modules/.bin/spawn-publish release --release <release-id> --creator-confirmation --credentials /path/to/spawn-project-<projectId>.json
 ```
 
-On Windows use `node node_modules/@spawndotfamily/sdk/dist/cli/run.js` with the same arguments. Legacy publishing keys grant upload/status for one project only. New downloaded credentials may separately grant listing:write and data:read/write/configure; this does not grant publication permission. Return the private preview URL, release ID, tests and remaining limitations. The creator must play and approve that exact preview in Spawn; the agent must not submit, review, approve, list, distribute rewards or claim deployment merely because upload succeeded.
+On Windows use `node node_modules/@spawndotfamily/sdk/dist/cli/run.js` with the same arguments. Poll `status` until the automated malware check passes, then play the exact preview. Existing active project credentials remain server-authorized; newly downloaded credentials may also identify `build:publish`, but editing the local scope list never grants authority. If the creator explicitly requests publication, the creator or authorized agent may run `release --release <release-id> --creator-confirmation`; the platform rechecks the exact release, owner scope and suspension state. Upload never publishes automatically, and the agent must not publish, distribute rewards or claim deployment without that explicit request. A legacy platform may return `pending_review` after this call.
 
 ## Shared game startup
 
@@ -63,11 +64,11 @@ Only use the candidate listing commands after platform endpoint availability is 
 
 ## 6. Choose the publishing transport
 
-Default to the CLI upload from the creator's computer; the agent does that step, not a manual dashboard file upload. A private GitHub checkout works too. If the creator wants website GitHub import, follow [GitHub builds](publishing.md#github-builds) and the supplied Actions example; ask them to connect their selected repositories. Never put source builds on Spawn's accounts server. Return the actual private preview link and stop for the creator's final approval.
+Default to the CLI upload from the creator's computer; the agent does that step, not a manual dashboard file upload. A private GitHub checkout works too. If the creator wants website GitHub import, follow [GitHub builds](publishing.md#github-builds) and the supplied Actions example; ask them to connect their selected repositories. Never put source builds on Spawn's accounts server. Return the actual private preview link and automated check status, then publish only after the exact build has been tested and the creator explicitly requests it.
 
 
 ## Required play-test handoff
 
-Record a real start → gameplay → finish/retry loop in a browser, plus input, asset/console errors and chosen SDK features. If you cannot operate a browser, say so; a successful build or spawn-publish check is not a play test. The creator and reviewer still play the exact uploaded build.
+Record a real start → gameplay → finish/retry loop in a browser, plus input, asset/console errors and chosen SDK features. If you cannot operate a browser, say so; a successful build or spawn-publish check is not a play test. Publish only the exact uploaded build that passed its automated check and was play-tested.
 
 Publication status and TEST currency are independent. Do not use environment: sandbox to display Private preview, replace a connected player with a fake account or enable any production bypass.

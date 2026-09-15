@@ -120,11 +120,14 @@ type Command =
   | { kind: 'help' }
   | { kind: 'check'; directory: string }
   | { kind: 'publish'; directory: string; sourceCommit?: string; credentialsPath?: string }
+  | { kind: 'release'; releaseId: string; creatorConfirmation: true; credentialsPath?: string }
   | { kind: 'status'; releaseId: string; credentialsPath?: string };
 
 export const CLI_USAGE = `Usage:
   spawn-publish check <browser-build-directory>
   spawn-publish publish <browser-build-directory> [--credentials <file>] [--source-commit <40-hex-commit>]
+  spawn-publish release --release <release-id> --creator-confirmation [--credentials <file>]
+  spawn-publish publish --release <release-id> --creator-confirmation [--credentials <file>]
   spawn-publish status <release-id> [--credentials <file>]
 ${LISTING_USAGE}
 ${TOKEN_USAGE}
@@ -394,7 +397,7 @@ export async function readCredentialsFile(credentialsPath: string, now = Date.no
   if (!Number.isFinite(expiresAt)) throw new PublishCliError('The credentials file has an invalid expiry.');
   if (expiresAt <= now) throw new PublishCliError('The credentials file has expired.');
 
-  if (parsed.scopes !== undefined && (!Array.isArray(parsed.scopes) || parsed.scopes.length > 7 || parsed.scopes.some(scope => typeof scope !== 'string' || !['build:read', 'build:upload', 'listing:write', 'data:read', 'data:write', 'data:configure', 'token:configure'].includes(scope)) || new Set(parsed.scopes).size !== parsed.scopes.length)) {
+  if (parsed.scopes !== undefined && (!Array.isArray(parsed.scopes) || parsed.scopes.length > 8 || parsed.scopes.some(scope => typeof scope !== 'string' || !['build:read', 'build:upload', 'build:publish', 'listing:write', 'data:read', 'data:write', 'data:configure', 'token:configure'].includes(scope)) || new Set(parsed.scopes).size !== parsed.scopes.length)) {
     throw new PublishCliError('The credentials file has invalid scopes.');
   }
   const config = {
@@ -416,6 +419,41 @@ function validateSourceCommit(value: string): string {
     throw new PublishCliError('sourceCommit must contain exactly 40 hexadecimal characters.');
   }
   return value;
+}
+
+function validateReleaseId(value: string): string {
+  if (!/^[A-Za-z0-9_-]{1,128}$/.test(value)) {
+    throw new PublishCliError('releaseId must be a safe release identifier.');
+  }
+  return value;
+}
+
+function parseReleaseCommand(argv: string[], credentialsPath?: string): Command {
+  let releaseId: string | undefined;
+  let creatorConfirmation = false;
+  for (let index = 1; index < argv.length; index += 1) {
+    const argument = argv[index];
+    if (argument === '--release') {
+      if (releaseId !== undefined) throw new PublishCliError('Duplicate release option.');
+      const value = argv[index + 1];
+      if (!value || value.startsWith('-')) throw new PublishCliError('--release requires a release ID.');
+      releaseId = validateReleaseId(value);
+      index += 1;
+    } else if (argument.startsWith('--release=')) {
+      if (releaseId !== undefined) throw new PublishCliError('Duplicate release option.');
+      releaseId = validateReleaseId(argument.slice('--release='.length));
+    } else if (argument === '--creator-confirmation') {
+      if (creatorConfirmation) throw new PublishCliError('Duplicate creator confirmation option.');
+      creatorConfirmation = true;
+    } else {
+      throw new PublishCliError('Unknown release option.');
+    }
+  }
+  if (!releaseId) throw new PublishCliError('release requires --release <release-id>.');
+  if (!creatorConfirmation) {
+    throw new PublishCliError('release requires --creator-confirmation after playing the exact preview.');
+  }
+  return { kind: 'release', releaseId, creatorConfirmation: true, credentialsPath };
 }
 
 export function parseCommand(argv: string[]): Command {
@@ -454,6 +492,22 @@ export function parseCommand(argv: string[]): Command {
     return parseListingCommand(positional, credentialsPath);
   }
 
+  if (
+    positional[0] === 'release' ||
+    positional[0] === 'publish-release' ||
+    (positional[0] === 'publish' && (
+      positional[1] === 'release' ||
+      positional.slice(1).some((argument) => argument === '--release' || argument.startsWith('--release='))
+    ))
+  ) {
+    const releaseArgs = positional[0] === 'publish' && positional[1] === 'release'
+      ? ['release', ...positional.slice(2)]
+      : positional[0] === 'publish-release'
+        ? ['release', ...positional.slice(1)]
+        : positional;
+    return parseReleaseCommand(releaseArgs, credentialsPath);
+  }
+
   if (positional[0] === 'status') {
     if (positional.length !== 2 || !/^[A-Za-z0-9_-]{1,128}$/.test(positional[1])) {
       throw new PublishCliError('status requires one safe release ID.');
@@ -490,10 +544,7 @@ function releaseCollectionUrl(config: PublishConfig): string {
 }
 
 function releaseStatusUrl(config: PublishConfig, releaseId: string): string {
-  if (!/^[A-Za-z0-9_-]{1,128}$/.test(releaseId)) {
-    throw new PublishCliError('releaseId must be a safe release identifier.');
-  }
-  return `${releaseCollectionUrl(config)}/${encodeURIComponent(releaseId)}`;
+  return `${releaseCollectionUrl(config)}/${encodeURIComponent(validateReleaseId(releaseId))}`;
 }
 
 export async function uploadRelease(
@@ -529,6 +580,23 @@ export async function getReleaseStatus(
   }, fetchImplementation);
 }
 
+export async function publishRelease(
+  config: PublishConfig,
+  releaseId: string,
+  fetchImplementation: FetchLike = globalThis.fetch,
+): Promise<ReleaseResponse> {
+  const validatedConfig = validatePublishConfig(config);
+  const url = `${releaseStatusUrl(validatedConfig, releaseId)}/publish`;
+  return requestJson(validatedConfig, url, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${validatedConfig.publishKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ played: true }),
+  }, fetchImplementation);
+}
+
 function displayPreviewUrl(value: unknown, baseUrl?: string): unknown {
   if (typeof value !== 'string' || !baseUrl) return value;
   try {
@@ -559,11 +627,47 @@ function useExplicitLocalLegacyPublisher(config: PublishConfig): boolean {
 
 export function formatReleaseSummary(response: unknown, secret?: string, baseUrl?: string): string {
   const value = isRecord(response) ? response : {};
+  const rawScan: Record<string, unknown> | undefined = isRecord(value.scan) ? value.scan : undefined;
+  const scan = rawScan
+    ? Object.fromEntries(
+      [
+        'status',
+        'policy',
+        'hash',
+        'filesChecked',
+        'filesTotal',
+        'updatedAt',
+        'completedAt',
+        'engine',
+        'definitionsAt',
+        'reason',
+      ].filter((key) => rawScan[key] !== undefined).map((key) => [key, rawScan[key]]),
+    )
+    : value.scan === null ? null : undefined;
+  const releaseId = typeof value.id === 'string' && /^[A-Za-z0-9_-]{1,128}$/.test(value.id)
+    ? value.id
+    : '<release-id>';
+  const scanStatus = isRecord(value.scan) && typeof value.scan.status === 'string'
+    ? value.scan.status
+    : undefined;
+  const next = value.status === 'published'
+    ? 'Published; no further action is required.'
+    : value.status === 'pending_review'
+      ? `This previously submitted build can now be published after its automated check passes. Play the exact preview, then run spawn-publish release --release ${releaseId} --creator-confirmation.`
+      : scanStatus === 'blocked'
+        ? 'Upload a corrected build; this release is blocked by the automated malware check.'
+        : scanStatus === 'error'
+          ? 'Retry the automated malware check; publish only after it passes.'
+          : scanStatus === 'passed'
+            ? `Play this exact preview, then run spawn-publish release --release ${releaseId} --creator-confirmation.`
+            : `Poll status until the automated malware check passes, then play this exact preview and run spawn-publish release --release ${releaseId} --creator-confirmation.`;
   const summary = {
     id: value.id,
     status: value.status,
     previewUrl: displayPreviewUrl(value.previewUrl, baseUrl),
     checks: value.checks,
+    ...(scan === undefined ? {} : { scan }),
+    next,
   };
   return redact(JSON.stringify(summary), secret);
 }
@@ -596,6 +700,11 @@ export async function main(
       ? await readCredentialsFile(command.credentialsPath)
       : readConfig(env);
     publishKey = config.publishKey;
+    if (command.kind === 'release') {
+      const response = await publishRelease(config, command.releaseId, fetchImplementation);
+      output.log(formatReleaseSummary(response, publishKey, config.apiUrl));
+      return 0;
+    }
     if (command.kind === 'status') {
       const response = await getReleaseStatus(config, command.releaseId, fetchImplementation);
       output.log(formatReleaseSummary(response, publishKey, config.apiUrl));

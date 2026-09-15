@@ -1,8 +1,8 @@
-# Private browser preview publishing
+# Browser preview publishing and explicit releases
 
-This package supports a local creator preview loop. It does not publish an npm release, publicly publish a game or approve a release.
+This package supports a local creator preview loop and explicit publication of an existing release. It does not publish an npm release, publish a game without an explicit creator action, or bypass the platform's owner, scan or suspension gates.
 
-Before integrating a game, read [AGENTS.md](../AGENTS.md), [security guidance](security.md), and [integration boundaries](integration.md). Inspect the existing project and reuse its browser build when possible. For a native project, explain the browser port and ask the creator before making substantial changes. Stop after returning the private preview for creator review.
+Before integrating a game, read [AGENTS.md](../AGENTS.md), [security guidance](security.md), and [integration boundaries](integration.md). Inspect the existing project and reuse its browser build when possible. For a native project, explain the browser port and ask the creator before making substantial changes. Return the private preview for play-testing, then publish only after an explicit creator request.
 
 ## Install the SDK from npm
 
@@ -17,6 +17,7 @@ The directory must already contain a root `index.html`; the CLI does not compile
 ```sh
 ./node_modules/.bin/spawn-publish publish ./dist --credentials ~/Downloads/spawn-project-<projectId>.json
 ./node_modules/.bin/spawn-publish status <release-id> --credentials ~/Downloads/spawn-project-<projectId>.json
+./node_modules/.bin/spawn-publish release --release <release-id> --creator-confirmation --credentials ~/Downloads/spawn-project-<projectId>.json
 ```
 
 The environment form is equivalent:
@@ -29,19 +30,31 @@ SPAWN_PUBLISH_KEY=<local-secret> \
 ./node_modules/.bin/spawn-publish publish ./dist
 ```
 
-Keep the publish key out of source, browser assets, prompts, logs, command output and the build directory. The credentials file expires and may contain `platformOrigin`, optional `uploadOrigin`, `projectId`, `publishKey`, `expiresAt`, and optional `scopes`. If `uploadOrigin` is omitted, the CLI derives `https://uploads.<platform-host>` for a remote platform and `http://127.0.0.1:3401` when the local platform is on port 3003. A worker origin returned by Spawn must match that expected origin exactly. Legacy files without scopes remain accepted for build operations and listing reads. Newly issued files may explicitly include `build:read`, `build:upload`, `listing:write`, `data:read`, `data:write`, `data:configure` and `token:configure`; only the server grants these permissions. HTTP is allowed only for exact local loopback origins; remote origins require HTTPS.
+Keep the publish key out of source, browser assets, prompts, logs, command output and the build directory. The credentials file expires and may contain `platformOrigin`, optional `uploadOrigin`, `projectId`, `publishKey`, `expiresAt`, and optional `scopes`. If `uploadOrigin` is omitted, the CLI derives `https://uploads.<platform-host>` for a remote platform and `http://127.0.0.1:3401` when the local platform is on port 3003. A worker origin returned by Spawn must match that expected origin exactly. Legacy files without scopes remain accepted; newly issued files may explicitly include `build:read`, `build:upload`, `build:publish`, `listing:write`, `data:read`, `data:write`, `data:configure` and `token:configure`. The server remains the authority for every permission, including publication. HTTP is allowed only for exact local loopback origins; remote origins require HTTPS.
 
-Remote publishing streams a manifest to the platform, sends each regular file to the isolated upload worker in 8 MiB chunks, seals the worker receipt, and completes the release on the platform with the publish key. The publish key is never sent to the worker, redirects are rejected, and a failed chunk may be retried with the same bytes. The client safety ceiling is 8,000,000,000 decoded build bytes total and per file, with 1,000 files and a 1,000,000 byte limit for every HTML file; Spawn defaults admission to 1,000,000,000 bytes and may grant an owner-controlled allowance up to that client ceiling. The CLI never creates a base64 or whole-build buffer. It includes supported regular browser assets, rejects hidden paths, `node_modules`, symlinks, source secrets and `.map` files. It prints only the release id, status, preview URL and checks. Creator approval of that exact preview is a separate Spawn action.
+Remote publishing streams a manifest to the platform, sends each regular file to the isolated upload worker in 8 MiB chunks, seals the worker receipt, and completes the release on the platform with the publish key. The publish key is never sent to the worker, redirects are rejected, and a failed chunk may be retried with the same bytes. The client safety ceiling is 8,000,000,000 decoded build bytes total and per file, with 1,000 files and a 1,000,000 byte limit for every HTML file; Spawn defaults admission to 1,000,000,000 bytes and may grant an owner-controlled allowance up to that client ceiling. The CLI never creates a base64 or whole-build buffer. It includes supported regular browser assets, rejects hidden paths, `node_modules`, symlinks, source secrets and `.map` files. Upload prints only the release id, status, preview URL and checks; it never invokes publication.
 
 The old 25 MB JSON helper remains only for local reference installations when no upload worker is configured. Remote publishing has no silent fallback to that path; it fails with the platform’s streaming upgrade response if an older client sends the legacy request.
 
 Uploaded games use the sandbox bridge and local dependencies because the preview CSP disallows remote CDN assets. The bridge derives its document token from `/build/<43-character-token>/...` and performs a one-time `MessageChannel` handshake. Legacy `requestPayment('entry')` returns the fixed TEST fallback when no token is configured; a configured Listing amount is a permanent access purchase and is never charged again after access, with an existing receipt or clear no-purchase-needed response used for compatibility. `requestTokenPayment({ amount, item? })` requires an explicit game-defined amount for a separate optional payment using the same listing-selected asset; browser code cannot select a token address. Engines requiring WebAssembly threads or `SharedArrayBuffer` are unsupported until isolated worker support exists.
 
-Follow [the creator checklist](creator-checklist.md) for package verification, Listing access behavior, connection UI, security checks and the full stop-before-approval workflow.
+Follow [the creator checklist](creator-checklist.md) for package verification, Listing access behavior, connection UI, security checks and the upload → scan → play-test → explicit publication workflow.
+
+## Publish a tested release
+
+Uploading creates a private preview and never publishes it automatically. Poll the same release with `spawn-publish status <release-id>` until its automated malware check is `passed`, open the returned preview URL and play the exact uploaded build. When the creator explicitly requests publication, run:
+
+```sh
+./node_modules/.bin/spawn-publish release --release <release-id> --creator-confirmation --credentials /path/to/spawn-project.json
+```
+
+The command sends an owner-authenticated `POST /api/v1/publish/:projectId/releases/:releaseId/publish` request with exactly `{ "played": true }`. The platform rechecks project ownership, the exact release's automated check and any suspension state before publishing. A legacy platform may return `pending_review`; the CLI surfaces that status without retrying or silently changing the release. The `publish --release <release-id> --creator-confirmation` spelling is accepted as an alias. No staff first-listing review is required by this workflow.
+
+The release command requires both `--release` and `--creator-confirmation`; it cannot infer a release from the most recent upload. Keep publication separate from upload so an agent can prepare and test a preview without making it public. Status output includes the scan metadata and a `next` action; call it again after a queued or scanning result, correct a blocked build, or retry a failed check through the platform before publishing.
 
 ## Game details and images
 
-**Available in Spawn’s TEST beta with scoped creator credentials.** A missing/unavailable endpoint is not a reason to use dashboard cookies or private APIs. These commands edit details for the one project in the downloaded file. They do not create a game, publish a draft, approve a release or change ownership, featured placement, platform fees, another project's price, balances or rewards.
+**Available in Spawn’s TEST beta with scoped creator credentials.** A missing/unavailable endpoint is not a reason to use dashboard cookies or private APIs. These commands edit details for the one project in the downloaded file. They do not create a game, publish a draft or change ownership, featured placement, platform fees, another project's price, balances or rewards.
 
 Read the current listing and integer version:
 
@@ -126,7 +139,7 @@ You have two paths:
 
 For an npm game, adapt [the example workflow](../examples/github-browser-build.yml), copy it into the game's `.github/workflows/` directory, and run it from GitHub Actions. The artifact must contain `index.html` at its root. Engine-specific build tools, licensing and output sizes remain your responsibility. No Spawn publishing secret is needed by this artifact workflow. It is manual by default; request the creator's decision before adding automatic push triggers or spending paid runner credits.
 
-Spawn downloads the chosen commit/artifact and validates it; it does not run repository install/build scripts. GitHub App access requests read-only Contents, Actions and Metadata for selected repositories. Connections expire and can be disconnected; reauthorize when prompted. Imports always produce a private preview. The creator's final approval and Spawn's first-listing review remain required. Automatic webhook imports and automatic publication are not enabled.
+Spawn downloads the chosen commit/artifact and validates it; it does not run repository install/build scripts. GitHub App access requests read-only Contents, Actions and Metadata for selected repositories. Connections expire and can be disconnected; reauthorize when prompted. Imports always produce a private preview. Publication still requires the exact release's automated check, play-testing and an explicit creator or authorized-agent release command. Automatic webhook imports and automatic publication are not enabled.
 
 GitHub-hosted runner and artifact limits belong to the creator's GitHub plan. Private repositories have a limited free allowance; additional usage may cost money. Keep artifacts small and short-lived. Check [GitHub's current usage policy](https://docs.github.com/en/billing/concepts/product-billing/github-actions) before enabling workflows. The App must first be registered and configured by the Spawn operator; do not claim private connection works when the UI says setup is pending.
 
@@ -137,4 +150,4 @@ GitHub-hosted runner and artifact limits belong to the creator's GitHub plan. Pr
 
 ## Creator database
 
-[Database commands](creator-database.md) let a private creator agent inspect and edit its own game records and configure score sharing. They require SDK 0.2.11, a matching platform deployment, and newly scoped credentials. They do not approve releases or transfer tokens. For missing module files, opaque-frame errors and network failures, see [troubleshooting](troubleshooting.md).
+[Database commands](creator-database.md) let a private creator agent inspect and edit its own game records and configure score sharing. They require SDK 0.2.11, a matching platform deployment, and newly scoped credentials. They do not publish releases or transfer tokens. For missing module files, opaque-frame errors and network failures, see [troubleshooting](troubleshooting.md).

@@ -1,12 +1,12 @@
 # Spawn: instructions for a creator's AI agent
 
-Your job is to get an existing game into a **private preview**, with tested integration and a clear handoff for its creator. Keep the game and its architecture; do not add every SDK feature by default.
+Your job is to get an existing game into a **private preview** or an explicitly requested published release, with tested integration and a clear handoff for its creator. Keep the game and its architecture; do not add every SDK feature by default.
 
 Before each editing session, compare the installed version with `npm view @spawndotfamily/sdk version`. Explain relevant changes and ask before upgrading; keep the existing lockfile until approved. An unavailable registry check must not block work. See [game data and update policy](docs/game-data.md).
 
 1. Read [the feature menu and short workflow](docs/creator-guide.md).
 2. Follow [the creator checklist](docs/creator-checklist.md). Read integration, testing and security sections needed for the chosen features.
-3. Build, run the local launcher, play-test and upload directly from the game folder. GitHub is optional. Return the actual preview URL, tests and limitations. The creator approves the exact build; Spawn reviews its first listing.
+3. Build, run the local launcher, play-test and upload directly from the game folder. GitHub is optional. Return the actual preview URL, tests and limitations. After the automated malware check passes, the creator may explicitly request publication by the creator or an authorized agent; no first-listing staff review is required.
 
 Before uploading, bundle the browser SDK with the game. Copying only its index.js omits transitive modules such as game-data.js and breaks startup. Run spawn-publish check, then spawn-dev and the actual private preview; read [diagnostics](docs/troubleshooting.md) if any step fails.
 
@@ -25,7 +25,7 @@ The README is the human-facing introduction. Keep operational instructions here 
 
 ## Non-negotiable boundaries
 
-- **Credentials stay local and private.** Use the downloaded file through the CLI. Never paste its key into chat, command arguments, Git, browser code, logs or screenshots. It grants this game's upload/status and explicitly scoped listing, token-entry and database edits. When `token:configure` is present, token-entry scope may set this project's Listing asset and one-time access price; it grants no platform-fee, other-project-pricing, approval, ownership, wallet or payout authority.
+- **Credentials stay local and private.** Use the downloaded file through the CLI. Never paste its key into chat, command arguments, Git, browser code, logs or screenshots. It grants this game's upload/status and, when the platform permits it, explicit release publication, plus separately scoped listing, token-entry and database edits. Publication still requires the exact release's automated checks, owner scope, suspension gates and an explicit `--creator-confirmation` action. When `token:configure` is present, token-entry scope may set this project's Listing asset and one-time access price; it grants no platform-fee, other-project-pricing, ownership, wallet or payout authority.
 - **Only documented, available methods.** Use the installed version's types and integration docs. If a requested method or hosted contract is missing, explain the limitation. Do not invent an endpoint or turn a first-party integration into a generic creator API.
 - **Identity comes from Spawn.** Use the isolated game client and shared startup controller. Wait for trusted identity before account-dependent play; multiplayer also needs verified server admission. Do not forge a player, forward cookies, relax origin checks, replace the isolated iframe or create an anonymous fallback after connection failure. Local fake accounts belong only in spawn-dev, never game code.
 - **TEST is not publication status.** An approved game can use TEST services. `environment: 'sandbox'` must not trigger fake identity or label an approved game as a private preview. No real-money deposits or redeemable payouts are enabled.

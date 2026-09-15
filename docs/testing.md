@@ -77,7 +77,7 @@ Keep `createSpawnGameClient()` unchanged. The explicit local launcher supplies i
 
 Opening the game directly, outside either supported launcher, must show a connection error. A failed or closed Spawn connection must never activate fake players. Do not detect trust from a hostname, referrer, query parameter or `NODE_ENV`; the SDK requires the launcher handshake. Publishing does not enable live money: Spawn's current account, payment and receipt contract is still `environment: 'sandbox'` with TEST tokens. Local mode also uses that label; it is not a switch for financial authority.
 
-Before approval, test the **same browser build** in its private Spawn preview with a real Spawn account. That catches platform authorization, quotas and deployed integration differences that a local simulation cannot certify. Multiplayer authentication and creator-owned server behavior require their own tests; this launcher does not simulate a game server or production authentication.
+Before publication, test the **same browser build** in its private Spawn preview with a real Spawn account. That catches platform authorization, quotas and deployed integration differences that a local simulation cannot certify. Multiplayer authentication and creator-owned server behavior require their own tests; this launcher does not simulate a game server or production authentication.
 
 ### Test one-to-one game transfers
 
@@ -90,7 +90,7 @@ After rebuilding the browser output, click **Rebuild / reload** in the launcher.
 
 Agents may read `window.__SPAWN_DEV_STATE__` **on the launcher page**. Browser tools restricted to DOM reads can read the same JSON from `#spawn-dev-state` text content. It returns a detached snapshot with `environment: 'local-test'`, `connected`, selected `player`, `lastScore`, `receiptStatus`, `lastReceipt`, and `balances`. Status is one of `idle`, `pending`, `paid`, `cancelled`, or `failed`. A selected player is not evidence of a connection: check `connected` too. This surface has no mutation methods, credentials or live account information. It is local diagnostic evidence, not proof of honest gameplay or authorization to pay rewards. Keep the opaque game iframe isolated.
 
-For a clean regression: open the game, verify connected identity, submit a score and inspect `lastScore`; test payment cancellation and confirmation if used; rebuild, click Rebuild / reload and repeat. Upload only after these checks pass, then return the private preview for human approval.
+For a clean regression: open the game, verify connected identity, submit a score and inspect `lastScore`; test payment cancellation and confirmation if used; rebuild, click Rebuild / reload and repeat. Upload only after these checks pass. Then wait for the automated malware check, play the same private preview and publish it only after the creator explicitly requests publication.
 
 The creator test panel also controls leaderboard sharing, best/latest/every-run policy and score order. Test Alice/Bob, duplicate submission IDs, nested inventory saves, version conflicts and intentional removal. See [game data](game-data.md). These methods need SDK 0.2.9.
 
