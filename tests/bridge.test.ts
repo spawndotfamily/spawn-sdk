@@ -570,24 +570,38 @@ test('entry payment accepts the listing token receipt and explicit token request
 
     const callsBeforeInvalidOptions = port.calls.length;
     await assert.rejects(client.requestTokenPayment({ amount: 0.25 as unknown as string }), /decimal string/i);
-    await assert.rejects(client.requestTokenPayment({ assetId: 'erc20:46630:0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa' } as unknown as sdk.SpawnTokenPaymentOptions), /only an optional amount.*item/i);
+    await assert.rejects(client.requestTokenPayment({ assetId: 'erc20:46630:0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa' } as unknown as sdk.SpawnTokenPaymentOptions), /explicit amount|optional item/i);
     assert.equal(port.calls.length, callsBeforeInvalidOptions, 'invalid token options must not reach Spawn');
 
-    const empty = client.requestTokenPayment();
-    const emptyRequest = port.calls.at(-1)!;
-    port.emit(responseFor(emptyRequest, {
+    const missingAmount = client.requestTokenPayment(undefined as unknown as sdk.SpawnTokenPaymentOptions);
+    if (port.calls.length > callsBeforeInvalidOptions) {
+      const missingAmountRequest = port.calls.at(-1)!;
+      port.emit(responseFor(missingAmountRequest, {
+        id: 'payment_missing_amount',
+        assetId: 'erc20:46630:0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+        amount: '1',
+        projectId: '123e4567-e89b-12d3-a456-426614174000',
+        status: 'paid',
+      }));
+    }
+    await assert.rejects(missingAmount, /explicit amount/i);
+    assert.equal(port.calls.length, callsBeforeInvalidOptions);
+
+    const explicit = client.requestTokenPayment({ amount: '1' });
+    const explicitRequest = port.calls.at(-1)!;
+    port.emit(responseFor(explicitRequest, {
       id: 'payment_3',
       assetId: 'erc20:46630:0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
       amount: '1',
       projectId: '123e4567-e89b-12d3-a456-426614174000',
       status: 'paid',
     }));
-    await empty;
-    const emptyRequestId = (emptyRequest.payload as { requestId?: unknown }).requestId;
-    assert.equal(typeof emptyRequestId, 'string');
-    assert.match(emptyRequestId as string, /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i);
+    await explicit;
+    const explicitRequestId = (explicitRequest.payload as { requestId?: unknown }).requestId;
+    assert.equal(typeof explicitRequestId, 'string');
+    assert.match(explicitRequestId as string, /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i);
 
-    const invalid = client.requestTokenPayment();
+    const invalid = client.requestTokenPayment({ amount: '1' });
     const invalidRequest = port.calls.at(-1)!;
     port.emit(responseFor(invalidRequest, {
       id: 'payment_2',
@@ -598,7 +612,7 @@ test('entry payment accepts the listing token receipt and explicit token request
     }));
     await assert.rejects(invalid, /invalid token payment/i);
 
-    const wrongNetwork = client.requestTokenPayment();
+    const wrongNetwork = client.requestTokenPayment({ amount: '1' });
     const wrongNetworkRequest = port.calls.at(-1)!;
     port.emit(responseFor(wrongNetworkRequest, {
       id: 'payment_4',
@@ -621,7 +635,7 @@ test('enforces the hosted 80-character token item limit while preserving the bou
     const port = makePort();
     surface.emit({ source: surface.parent, origin: PLATFORM_ORIGIN, data: { type: 'spawn:connected', version: 1 }, ports: [port] });
 
-    const accepted = client.requestTokenPayment({ item: 'x'.repeat(80) });
+    const accepted = client.requestTokenPayment({ amount: '1', item: 'x'.repeat(80) });
     const acceptedRequest = port.calls.at(-1)!;
     port.emit(responseFor(acceptedRequest, {
       id: 'payment_item_80',
@@ -637,7 +651,7 @@ test('enforces the hosted 80-character token item limit while preserving the bou
     assert.match(acceptedPayload.requestId as string, /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i);
 
     const callsBeforeInvalid = port.calls.length;
-    const rejected = client.requestTokenPayment({ item: 'x'.repeat(81) });
+    const rejected = client.requestTokenPayment({ amount: '1', item: 'x'.repeat(81) });
     if (port.calls.length > callsBeforeInvalid) {
       const invalidRequest = port.calls.at(-1)!;
       port.emit(responseFor(invalidRequest, {
@@ -678,7 +692,7 @@ test('token payment accepts a stable caller request ID and rejects malformed IDs
     await payment;
 
     const callsBeforeInvalid = port.calls.length;
-    await assert.rejects(client.requestTokenPayment({ requestId: 'not-a-uuid' }), /requestId|UUID/i);
+    await assert.rejects(client.requestTokenPayment({ amount: '1', requestId: 'not-a-uuid' }), /requestId|UUID/i);
     assert.equal(port.calls.length, callsBeforeInvalid);
     client.dispose();
   } finally {
@@ -693,7 +707,7 @@ test('token receipt chain 31337 is accepted only for a loopback platform origin'
     const client = sdk.createSpawnGameClient({ platformOrigin: localOrigin });
     const port = makePort();
     surface.emit({ source: surface.parent, origin: localOrigin, data: { type: 'spawn:connected', version: 1 }, ports: [port] });
-    const pending = client.requestTokenPayment();
+    const pending = client.requestTokenPayment({ amount: '1' });
     const request = port.calls.at(-1)!;
     port.emit(responseFor(request, {
       id: 'payment_local',

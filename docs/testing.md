@@ -34,8 +34,8 @@ Both launchers supply a public `platformOrigin` configuration before game code. 
 | Request optional `entry` payment, then Cancel | No debit and no paid entitlement |
 | Confirm the displayed 10 TEST | Processing, Paid checkmark, then Continue returns a fake receipt |
 | Request the same entry again in that launch | Same receipt; no second debit |
-| Request a listing-configured token entry in a private preview | Spawn confirms the listing asset and configured default amount; SDK returns an integer base-unit amount string |
-| Request a custom token amount with `requestTokenPayment({ amount: '0.25', item: 'Entry' })` in a private preview | Spawn uses the same listing asset and shows its confirmation; browser code never supplies the asset address |
+| Request a listing-configured token entry in a private preview | The Listing amount is the permanent access purchase; verify first access and then verify a legacy repeat request returns the prior receipt or a no-purchase-needed error without a second debit |
+| Request a custom token amount with `requestTokenPayment({ amount: '0.25', item: 'Entry' })` in a private preview | Spawn requires the explicit amount, uses the same listing asset and shows its confirmation; browser code never supplies the asset address |
 | Choose Empty balance | Payment fails without a negative balance |
 | Disconnect, close or reopen | Game pauses on loss; a new launch reconnects through startup |
 | Submit a score | Unverified local record; no automatic reward |
@@ -59,6 +59,7 @@ All balances are fake and belong to this one local browser session:
 | Empty balance | 0 |
 | Creator wallet | 1,000 |
 | Game pool | 0 |
+| Spawn fee balance | 0 |
 
 1. In your game, request the optional `entry` payment. Cancel leaves balances unchanged. Confirm moves 10 TEST from the selected player into the game pool; Continue returns the receipt. Repeating the request in the same launch returns that receipt without another charge.
 2. Use **Top up pool** to move the chosen amount from the fake creator wallet into the pool. **Withdraw** moves it back into the fake creator wallet. This is not an on-chain withdrawal.
@@ -66,7 +67,7 @@ All balances are fake and belong to this one local browser session:
 4. Inspect the score, then use **Reward Alice/Bob/Empty balance** in the creator test panel. This moves the amount from the pool to the selected test player. Select a different player in the header to test receiving a reward in another account.
 5. Try an amount above the available balance. The transfer fails without changing balances. **Reset testing** starts again with the amounts above and clears local saves, scores and receipts.
 
-The panel shows current balances, the latest 12 transfers and their local receipt IDs, and the latest five unverified scores. State retains at most 100 transfers and 100 scores in memory. Closing or reloading the page clears them. No fee or tax is simulated; economics are not finalized.
+The panel shows current balances, the latest 12 transfers and their local receipt IDs, and the latest five unverified scores. State retains at most 100 transfers and 100 scores in memory. Closing or reloading the page clears them. New local transfers are fee-free; the legacy fee fields remain on receipts for compatibility.
 
 Creator controls are launcher tools, **not game SDK methods**. Do not copy them into the game, add a browser reward endpoint or pay directly from client-supplied wins. The local game bridge supports identity, saves, unverified scores, fixed TEST entry requests and simulated creator-panel flows. It does not simulate listing-configured tokens. Receiving a simulated reward updates the launcher balance; there is no game balance/reward-event subscription API. Inspect results in the panel rather than inventing one.
 
@@ -78,9 +79,9 @@ Opening the game directly, outside either supported launcher, must show a connec
 
 Before approval, test the **same browser build** in its private Spawn preview with a real Spawn account. That catches platform authorization, quotas and deployed integration differences that a local simulation cannot certify. Multiplayer authentication and creator-owned server behavior require their own tests; this launcher does not simulate a game server or production authentication.
 
-### Test the fee split
+### Test one-to-one game transfers
 
-The local fake ledger uses integer hundredths of TEST. A confirmed 10 TEST entry credits 9.5 to the game pool and 0.5 to the separate Spawn fee balance. Top-ups use the same 5% incoming fee. A 4 TEST reward debits the pool by exactly 4 and credits the player by exactly 4. Test insufficient net pool funds, cancellation and repeated confirmation. Local tests do not authorize hosted multiplayer payouts.
+The local fake ledger uses integer hundredths of TEST. A confirmed 10 TEST entry debits exactly 10 and credits exactly 10 to the game pool; the Spawn fee balance stays at 0. Top-ups, withdrawals and manual rewards also move the exact requested amount. A 4 TEST reward debits the pool by exactly 4 and credits the player by exactly 4. Test insufficient pool funds, cancellation and repeated confirmation. Historical fee fields remain available on receipts, but new operations never create a fee. Local tests do not authorize hosted multiplayer payouts.
 
 
 ## Rebuild and verify

@@ -1,5 +1,7 @@
 export type LocalPlayer = 'alice' | 'bob' | 'empty';
 type Account = LocalPlayer | 'creator' | 'pool' | 'platform';
+/** New game transfers in the local launcher are permanently fee-free. */
+export const LOCAL_PLATFORM_FEE_BPS = 0;
 export type LocalTransfer = {
   id: string;
   kind: 'entry' | 'funding' | 'reward' | 'withdrawal';
@@ -21,9 +23,12 @@ export class LocalTestEconomy {
   private transfers: LocalTransfer[] = [];
 
   readonly feeBps: number;
-  constructor(feeBps = 500) {
-    if (!Number.isSafeInteger(feeBps) || feeBps < 0 || feeBps > 10000) throw new Error("Invalid platform fee rate.");
-    this.feeBps = feeBps;
+  constructor(feeBps = LOCAL_PLATFORM_FEE_BPS) {
+    // Keep the argument as a compatibility guard so stale fee configuration
+    // cannot silently create a new non-zero transfer. Historical receipts keep
+    // their fee fields, but this ledger only creates zero-fee receipts.
+    if (feeBps !== LOCAL_PLATFORM_FEE_BPS) throw new Error('Platform fees are disabled for local test transfers.');
+    this.feeBps = LOCAL_PLATFORM_FEE_BPS;
   }
 
   balance(account: string) {
@@ -36,7 +41,7 @@ export class LocalTestEconomy {
     const minor = Math.round(amount * 100);
     if (!Number.isFinite(amount) || amount <= 0 || Number(amount.toFixed(2)) !== amount || !Number.isSafeInteger(minor)) throw new Error('Use positive TEST amounts with at most two decimal places.');
     if (this.balances[from] < minor) throw new Error('Insufficient local test balance.');
-    const fee = to === 'pool' ? Number(BigInt(minor) * BigInt(this.feeBps) / 10000n) : 0;
+    const fee = 0;
     if (!Number.isSafeInteger(this.balances[to] + minor - fee) || !Number.isSafeInteger(this.balances.platform + fee)) throw new Error('Local test balance limit reached.');
     const receipt: LocalTransfer = { id, kind, from, to, amount, platformFee: fee / 100, netAmount: (minor - fee) / 100, feeBps: to === 'pool' ? this.feeBps : 0 };
     this.balances[from] -= minor;

@@ -31,7 +31,7 @@ function requestPayment(launch: string, product: string) {
   return new Promise((resolve, reject) => {
     payment = { quote, resolve, reject }; receiptStatus = 'pending'; refresh();
     element('payment-title').textContent = 'Confirm test payment'; element('payment-title').className = '';
-    element('payment-copy').textContent = 'Pay 10 TEST? The game pool receives 9.5 TEST; Spawn receives 0.5 TEST (5%, included).';
+    element('payment-copy').textContent = 'Pay 10 TEST? All 10 TEST goes to the game pool; no Spawn fee is charged.';
     confirm.hidden = cancel.hidden = false; next.hidden = true; confirm.disabled = false;
     document.exitPointerLock?.(); dialog.showModal();
   });
@@ -49,7 +49,7 @@ confirm.onclick = () => {
     try {
       lastReceipt = state.confirm(current.quote.id); receiptStatus = 'paid'; refresh();
       element('payment-title').textContent = 'Paid'; element('payment-title').className = 'paid';
-      element('payment-copy').textContent = 'Paid 10 TEST: 9.5 to the game pool and 0.5 to Spawn.';
+      element('payment-copy').textContent = 'Paid 10 TEST: all 10 TEST went to the game pool; no Spawn fee was charged.';
       confirm.hidden = cancel.hidden = true; next.hidden = false; next.focus();
     } catch (error) { receiptStatus = 'failed'; current.reject(error instanceof Error ? error : new Error('Local payment failed.')); payment = null; dialog.close(); refresh(); }
   }));

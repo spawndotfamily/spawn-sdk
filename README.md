@@ -15,11 +15,11 @@ Keep your game, engine, and build tools. Use the features you need.
 | Saves and inventories | Store progress, settings, equipment, and other nested JSON data. |
 | Scores and leaderboards | Submit scores and show best scores, latest scores, or every run. You choose what players can see. |
 | Creator database | Read and manage your game's player data from your computer, even before the first upload. |
-| Entry payments | Let players confirm a listing-selected testnet token or the fixed TEST fallback through Spawn's shared overlay. |
-| Local testing | Try fake accounts, saves, scores, payments, and creator-pool controls before uploading. |
+| Listing access and optional payments | Let players use a free Listing or confirm its one-time listing-selected testnet access purchase; separate optional payments use explicit amounts through Spawn's shared overlay. |
+| Local testing | Try fake accounts, saves, scores, fixed TEST payments, and creator-pool controls before uploading. |
 | Publishing | Upload your browser build and manage its listing and images. |
 
-The local simulator and unconfigured entry fallback use fixed TEST tokens with no cash value. A configured game entry can use one Spawn-admitted asset on chain ID 46630 testnet; Spawn selects the asset from the game's listing settings and owns confirmation. Real-money deposits and redeemable payouts are not enabled.
+The local simulator and unconfigured entry fallback use fixed TEST tokens with no cash value; the local simulator does not emulate Listing-configured token purchases. A hosted configured game entry can use one Spawn-admitted asset on chain ID 46630 testnet; Spawn selects the asset from the game's listing settings and owns confirmation. Real-money deposits and redeemable payouts are not enabled.
 
 ## Publish with your AI agent
 
@@ -81,9 +81,9 @@ Already have a build? You can also use **Manual upload** or **GitHub import** in
 
 Your game's database supports nested objects and arrays, with storage limits and version checks to protect against accidental overwrites. See [player data and leaderboards](docs/game-data.md) and [creator database tools](docs/creator-database.md).
 
-Spawn handles connection notices, transaction history, and payment confirmation through one shared overlay. The current platform fee is 5% on funds entering a creator pool; outgoing rewards have no additional platform fee. **Browser-submitted scores and saves are unverified:** use manual review or supported trusted-server validation before awarding tokens.
+Spawn handles connection notices, transaction history, and payment confirmation through one shared overlay. New game payments and creator-pool transfers settle one-to-one with a 0% Spawn platform fee; historical receipts retain the fee fields recorded when they were paid. **Browser-submitted scores and saves are unverified:** use manual review or supported trusted-server validation before awarding tokens.
 
-For configured token entries, the game can request the listing-selected asset through that overlay. The SDK does not accept a token address from browser code; see [entry payment integration](docs/integration.md#configured-token-entry).
+For configured token entries, the Listing's `entryAmount` is the permanent game-access purchase price. Do not request that default entry payment again after access is granted. A separate optional custom payment may provide only an amount and item; Spawn still selects the Listing asset. The SDK does not accept a token address from browser code; see [entry payment integration](docs/integration.md#configured-token-entry).
 
 Multiplayer requires your own authoritative game server and an enabled Spawn integration. Server registration is not self-service, and the SDK does not provide server hosting. See the [multiplayer guide](docs/multiplayer.md).
 

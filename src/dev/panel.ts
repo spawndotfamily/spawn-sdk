@@ -14,7 +14,9 @@ export function createCreatorPanel(getState: () => LocalTestState, getPlayer: ()
     element('leaderboard-direction').textContent = state.leaderboard.direction === 'higher' ? 'Higher wins' : 'Lower wins';
     for (const button of Array.from(document.querySelectorAll<HTMLButtonElement>('[data-leaderboard-mode]'))) button.setAttribute('aria-pressed', String(button.dataset.leaderboardMode === state.leaderboard.mode));
     element('balance').textContent = `${names[player]} · ${state.balance(player)} TEST`;
-    element('platform-balance').textContent = `${state.economy.balance('platform')} TEST`;
+    const platformBalance = state.economy.balance('platform');
+    element('platform-balance').textContent = `${platformBalance} TEST`;
+    element('platform-balance-row').hidden = platformBalance === 0;
     element('pool-balance').textContent = `${state.economy.balance('pool')} TEST`;
     element('creator-balance').textContent = `${state.economy.balance('creator')} TEST`;
     element<HTMLButtonElement>('reward-player').disabled = player === 'guest';
@@ -23,7 +25,8 @@ export function createCreatorPanel(getState: () => LocalTestState, getPlayer: ()
     for (const item of state.economy.history.slice(0, 12)) {
       const row = document.createElement('li');
       const title = document.createElement('strong'); title.textContent = `${item.amount} TEST · ${item.kind}`;
-      const route = document.createElement('span'); route.textContent = `${names[item.from]} → ${names[item.to]} · ${item.netAmount} TEST received · ${item.platformFee} TEST Spawn fee`;
+      const route = document.createElement('span');
+      route.textContent = `${names[item.from]} → ${names[item.to]} · ${item.netAmount} TEST received${item.platformFee > 0 ? ` · ${item.platformFee} TEST historical Spawn fee` : ''}`;
       const details = document.createElement('details'), summary = document.createElement('summary'), id = document.createElement('code');
       summary.textContent = 'Local receipt'; id.textContent = item.id; details.append(summary, id);
       row.append(title, route, details); history.append(row);
@@ -40,7 +43,7 @@ export function createCreatorPanel(getState: () => LocalTestState, getPlayer: ()
     try {
       const state = getState(), quantity = amount.valueAsNumber;
       const receipt = kind === 'reward' ? state.economy.reward(getPlayer(), quantity) : state.economy[kind](quantity);
-      feedback.textContent = `${receipt.amount} TEST paid; ${receipt.netAmount} to ${names[receipt.to]}, ${receipt.platformFee} Spawn fee.`;
+      feedback.textContent = `${receipt.amount} TEST transferred; ${receipt.netAmount} to ${names[receipt.to]}${receipt.platformFee > 0 ? `; ${receipt.platformFee} TEST historical Spawn fee` : ''}.`;
       feedback.dataset.error = 'false';
       refresh();
     } catch (error) {

@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.4.0 — 2026-09-15
+
+### Changed
+- **Breaking:** `requestTokenPayment` now requires an explicit `amount` in both the TypeScript options and runtime request. Use it only for a separately documented optional payment; the Listing `entryAmount` remains the permanent game-access purchase and is never charged again as a default.
+- New game payments and creator-pool transfers in the local SDK simulator settle one-to-one with a 0% Spawn platform fee.
+- Historical fee fields remain available on receipts; pending quotes created under the prior fee policy must be re-quoted.
+- Creator guidance distinguishes the Listing's permanent game-access purchase price from separately requested custom payments and avoids charging the default entry price twice.
+
+### Upgrade notes
+- Update callers that used `requestTokenPayment()` or omitted `amount`; pass an exact positive human-readable decimal string, with `item` optional. The SDK rejects omitted amounts before sending a bridge request.
+- Legacy `requestPayment('entry')` still returns fixed 10 TEST when no token is configured. With a configured Listing, it represents the permanent access purchase and returns the existing purchase receipt or a no-purchase-needed error after access instead of starting another default-price debit.
+- This release is a breaking pre-1.0 API change; rebuild browser games with SDK 0.4.0 before selecting a Listing token.
+
 ## 0.3.0 — 2026-09-15
 
 ### Added

@@ -1,14 +1,15 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { LocalTestEconomy } from '../src/dev/economy.ts';
-test('local entry exposes platform fee and does not charge rewards',()=>{
+test('new local transfers are one-to-one and retain zeroed legacy fee fields',()=>{
  const ledger=new LocalTestEconomy();const entry=ledger.entry('alice','entry-1');
- assert.equal(ledger.balance('pool'),9.5);assert.equal(ledger.balance('platform'),.5);
- assert.equal(entry.platformFee,.5);assert.equal(entry.netAmount,9.5);
- ledger.reward('bob',9.5);assert.equal(ledger.balance('bob'),109.5);assert.equal(ledger.balance('pool'),0);assert.equal(ledger.balance('platform'),.5);
+ assert.equal(ledger.balance('pool'),10);assert.equal(ledger.balance('platform'),0);
+ assert.equal(entry.platformFee,0);assert.equal(entry.netAmount,10);assert.equal(entry.feeBps,0);
+ const funding=ledger.fund(1.01);
+ assert.equal(funding.platformFee,0);assert.equal(funding.netAmount,1.01);assert.equal(funding.feeBps,0);
+ ledger.reward('bob',10);assert.equal(ledger.balance('bob'),110);assert.equal(ledger.balance('pool'),1.01);assert.equal(ledger.balance('platform'),0);
 });
-test('local platform fee is configurable and recipient receipts stay fixed',()=>{
- const ledger=new LocalTestEconomy(250);const entry=ledger.entry('alice','entry-1');
- assert.equal(entry.platformFee,.25);assert.equal(ledger.balance('pool'),9.75);
- assert.throws(()=>new LocalTestEconomy(-1));
+test('nonzero local fee configuration cannot be used for future transfers',()=>{
+ assert.throws(()=>new LocalTestEconomy(250),/disabled/);
+ assert.throws(()=>new LocalTestEconomy(-1),/disabled/);
 });
