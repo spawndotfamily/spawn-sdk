@@ -2,6 +2,9 @@
 
 ## 0.4.0 — 2026-09-15
 
+### Added
+- Runtime validation rejects optional token payment requests without an explicit amount before contacting the game host.
+
 ### Changed
 - **Breaking:** `requestTokenPayment` now requires an explicit `amount` in both the TypeScript options and runtime request. Use it only for a separately documented optional payment; the Listing `entryAmount` remains the permanent game-access purchase and is never charged again as a default.
 - New game payments and creator-pool transfers in the local SDK simulator settle one-to-one with a 0% Spawn platform fee.
