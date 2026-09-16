@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.6.1 — 2026-09-16
+
+### Added
+- Added a packaged agent deployment/activation checklist distinguishing browser publication, running authoritative server code, dedicated match-key setup and two-member settlement verification.
+- Added a non-secret operator handoff template and clear setup-state messaging; publishing credentials never grant payout authority.
+
+### Changed
+- Corrected active integration guides: hosted demo TEST credits are retired. Configure an admitted Listing testnet token; missing token settings no longer imply a hosted TEST fallback. Isolated local simulation and historical receipt types remain compatible.
+- Clarified that player-approved trades need no match key and move platform balances; on-chain withdrawal is a separate Wallet action.
+
+### Upgrade notes
+- Pin 0.6.1 and have your game agent reread AGENTS.md and docs/match-payments.md, especially the deployment and activation handoff. Complete the game server build/deployment separately from the browser upload.
+- This documentation patch adds no new endpoint or automatic activation. Existing match and trade APIs are unchanged. Dedicated match activation remains a separate operator action; report its exact missing dependency instead of claiming matches are unsupported.
+
 ## 0.6.0 — 2026-09-16
 
 ### Added

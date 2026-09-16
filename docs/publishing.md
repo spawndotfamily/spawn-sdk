@@ -36,7 +36,7 @@ Remote publishing streams a manifest to the platform, sends each regular file to
 
 The old 25 MB JSON helper remains only for local reference installations when no upload worker is configured. Remote publishing has no silent fallback to that path; it fails with the platform’s streaming upgrade response if an older client sends the legacy request.
 
-Uploaded games use the sandbox bridge and local dependencies because the preview CSP disallows remote CDN assets. The bridge derives its document token from `/build/<43-character-token>/...` and performs a one-time `MessageChannel` handshake. Legacy `requestPayment('entry')` returns the fixed TEST fallback when no token is configured; a configured Listing amount is a permanent access purchase and is never charged again after access, with an existing receipt or clear no-purchase-needed response used for compatibility. `requestTokenPayment({ amount, item? })` requires an explicit game-defined amount for a separate optional payment using the same listing-selected asset; browser code cannot select a token address. Engines requiring WebAssembly threads or `SharedArrayBuffer` are unsupported until isolated worker support exists.
+Uploaded games use the sandbox bridge and local dependencies because the preview CSP disallows remote CDN assets. The bridge derives its document token from `/build/<43-character-token>/...` and performs a one-time `MessageChannel` handshake. Hosted `requestPayment('entry')` rejects when no Listing token is configured; a configured Listing amount is a permanent access purchase and is never charged again after access, with an existing receipt or clear no-purchase-needed response used for compatibility. `requestTokenPayment({ amount, item? })` requires an explicit game-defined amount for a separate optional payment using the same listing-selected asset; browser code cannot select a token address. Engines requiring WebAssembly threads or `SharedArrayBuffer` are unsupported until isolated worker support exists.
 
 Follow [the creator checklist](creator-checklist.md) for package verification, Listing access behavior, connection UI, security checks and the upload → scan → play-test → explicit publication workflow.
 
@@ -54,7 +54,7 @@ The release command requires both `--release` and `--creator-confirmation`; it c
 
 ## Game details and images
 
-**Available in Spawn’s TEST beta with scoped creator credentials.** A missing/unavailable endpoint is not a reason to use dashboard cookies or private APIs. These commands edit details for the one project in the downloaded file. They do not create a game, publish a draft or change ownership, featured placement, platform fees, another project's price, balances or rewards.
+**Available in Spawn’s testnet beta with scoped creator credentials.** A missing/unavailable endpoint is not a reason to use dashboard cookies or private APIs. These commands edit details for the one project in the downloaded file. They do not create a game, publish a draft or change ownership, featured placement, platform fees, another project's price, balances or rewards.
 
 Read the current listing and integer version:
 
@@ -114,7 +114,7 @@ If the creator requests token entry, ask for the token contract address (or exac
 
 The selector must resolve to one exact enabled asset returned by Spawn's current list. The list admits only `spawn` and `partner` assets on chain ID 46630 testnet; chain ID 31337 is accepted only from a loopback local test service. If a name is ambiguous, use its contract address. Arbitrary ERC-20 addresses are rejected. The CLI converts the decimal amount to a base-unit string using the asset's decimals without floating-point arithmetic, then sends the asset ID and amount together in one versioned update to `/api/v1/publish/:projectId/token`. Read `settings.version` first; a 409 requires a fresh read and review, never an automatic retry.
 
-`token get` uses a downloaded file with `build:read`, `token:configure`, or legacy read access. If no token is selected, it returns `{ settings: null }`; the first `token configure` uses `--version 0`, and hosted entry payments keep the fixed TEST fallback until then. The local `spawn-dev` simulator remains fixed TEST and does not emulate a configured Listing purchase. `token configure` requires an explicit new `token:configure` scope; older credentials must be downloaded again. Token search does not send the publish key to the public asset-list endpoint. If the endpoint or scope is unavailable, stop and report that limitation instead of using a dashboard cookie or custom API call.
+`token get` uses a downloaded file with `build:read`, `token:configure`, or legacy read access. If no token is selected, it returns `{ settings: null }`; the first `token configure` uses `--version 0`, and hosted payments remain unavailable until a Listing token is configured. The local `spawn-dev` simulator remains fixed TEST and does not emulate a configured Listing purchase. `token configure` requires an explicit new `token:configure` scope; older credentials must be downloaded again. Token search does not send the publish key to the public asset-list endpoint. If the endpoint or scope is unavailable, stop and report that limitation instead of using a dashboard cookie or custom API call.
 
 ## Browser build format
 
@@ -151,3 +151,7 @@ GitHub-hosted runner and artifact limits belong to the creator's GitHub plan. Pr
 ## Creator database
 
 [Database commands](creator-database.md) let a private creator agent inspect and edit its own game records and configure score sharing. They require SDK 0.2.11, a matching platform deployment, and newly scoped credentials. They do not publish releases or transfer tokens. For missing module files, opaque-frame errors and network failures, see [troubleshooting](troubleshooting.md).
+
+## Multiplayer release handoff
+
+Publishing uploads browser assets only; it does not deploy the authoritative server or activate payouts. Follow [the match deployment checklist](match-payments.md#agent-deployment-and-activation-handoff). Report browser release, running server revision, registration/activation and two-member settlement verification separately. Prepare the server artifact and non-secret handoff when another operator owns deployment; do not claim the SDK lacks matches just because setup is incomplete.

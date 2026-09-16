@@ -19,7 +19,7 @@ Keep your game, engine, and build tools. Use the features you need.
 | Local testing | Try fake accounts, saves, scores, fixed TEST payments, and creator-pool controls before uploading. |
 | Publishing | Upload a private preview, inspect its automated checks, and explicitly publish a tested release. |
 
-The local simulator and unconfigured entry fallback use fixed TEST tokens with no cash value; the local simulator does not emulate Listing-configured token purchases. A hosted configured game entry can use one Spawn-admitted asset on chain ID 46630 testnet; Spawn selects the asset from the game's listing settings and owns confirmation. Real-money deposits and redeemable payouts are not enabled.
+Only the isolated local simulator uses fixed TEST credits with no cash value; hosted payments without a Listing token reject; the local simulator does not emulate Listing-configured token purchases. A hosted configured game entry can use one Spawn-admitted asset on chain ID 46630 testnet; Spawn selects the asset from the game's listing settings and owns confirmation. Real-money deposits and redeemable payouts are not enabled.
 
 ## Publish with your AI agent
 

@@ -14,6 +14,35 @@ This is separate from buying permanent access to the game. The Listing chooses t
 
 If activation is missing, tell the creator exactly which server-registration dependency is missing. You can still build and publish the game. Do not invent endpoints, silently use fake currency, or claim automatic settlement is active.
 
+## Agent deployment and activation handoff
+
+**Browser publication, authoritative-server deployment and match activation are three separate steps.** `spawn-publish` uploads browser assets only. Updating the package or publishing a new browser release does not restart your server, install its new game rules, or enable match settlement. Do not report “SDK unsupported” when the server deployment or dedicated activation is missing.
+
+Continue the work that does not need activation: implement the authoritative game rules, integrate the server client, build and test the server artifact, and prepare its deployment instructions. Deploy only to a creator-authorized server. Never request access to Spawn's private infrastructure or silently substitute the existing Rob the Rich service.
+
+| Checkpoint | Evidence the game agent must obtain |
+| --- | --- |
+| Listing ready | Read saved settings through `spawn-publish token get`; verify the intended admitted token and the separate permanent-access price. |
+| Browser ready | Bundle the SDK, publish the tested browser release, and record its release ID. |
+| Server deployed | Record the actual running server build/revision and verify it includes the new match coordinator. A successful browser upload is not this evidence. |
+| Server admitted | Verify launch grants against the registered project, server origin and audience. Reject guests for token matches; use the verified grant's session ID as `launchId`. |
+| Match activation | Operator registers a dedicated match credential for this project; install it only in the authorized server's private configuration. Publishing or storage credentials cannot replace it. |
+| End-to-end verified | Two distinct signed-in players confirm the exact Listing-token entries, server observes both reservations, capture succeeds, and settlement or refund is confirmed by Spawn. |
+
+When operator setup is the remaining dependency, provide this **non-secret handoff**:
+
+- Project ID and public platform origin.
+- Registered public game-server origin and audience; ask the creator/operator for missing public registration details rather than guessing.
+- Current deployed server revision, or explicitly “server artifact prepared, not deployed”.
+- Server configuration variable names used for project ID and dedicated match credential, plus which authorized server operator will install it. Do not include credential values or private infrastructure details.
+- Test results and the exact blocked stage/status. Redact credentials and player grants from errors.
+
+There is no self-service match-key issuance or activation endpoint in this SDK release. Do not invent a command, reuse the publishing key, or put payout credentials in a browser bundle to bypass that boundary. If the creator has assigned server deployment/activation to another operator, stop at this handoff for those actions and continue unrelated game work. Installing this SDK cannot activate a game by itself.
+
+Keep token matchmaking unavailable with a clear “Token matches are being set up” message until setup succeeds. A local test pass does not prove hosted activation. Do not create a paid match merely as a readiness probe: real match verification requires two consenting members and the normal confirmation flow. After a timeout, reconcile the same match ID before retrying any mutation.
+
+Direct player gifts and two-way token trades use [the trade API](trades.md), not server-owned match settlement. They need player approval and authenticated member recipients, but no dedicated match key. Both flows transfer deposited Spawn platform balances; on-chain withdrawal is a separate Wallet action.
+
 ## Server lifecycle
 
 ```js
