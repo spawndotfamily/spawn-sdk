@@ -76,3 +76,7 @@ Publication status and TEST currency are independent. Do not use environment: sa
 ## Listing-token player competition
 
 Two-player competition using admitted Listing testnet tokens is supported through the dedicated server match API in SDK 0.5.0. This is not limited to TEST demo points. Follow [match payments](match-payments.md) for server activation, grant verification, player confirmation, exact amounts, escrow and authoritative settlement. No house-funded dealer is required. Browser-reported wins and ordinary publishing credentials never authorize payouts.
+
+## Player trades
+
+For direct transfers, read [trades](trades.md). Use `client.trades`, current offer versions and Spawn-owned sender confirmation. Require member accounts on both sides. Test insufficient funds, guest recipients, offer changes, cancellation, expiry and unknown outcomes. Never display success from acceptance clicks or transfer game-owned items based on a client-reported token receipt.

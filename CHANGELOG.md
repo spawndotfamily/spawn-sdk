@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.6.0 — 2026-09-16
+
+### Added
+- `client.trades` on isolated browser and registered multiplayer clients: context, create, get, offer, accept and cancel.
+- Player-authorized direct gifts and atomic two-way transfers of the Listing testnet token, with exact amounts, zero transfer fees and shared Spawn sender approval.
+- Packaged agent guide covering authenticated member-only recipients, versioned offers, five-minute expiry, settlement status and safe retries.
+
+### Changed
+- Clearly separates match escrow from direct player transfers and independent game item ownership. Guest accounts cannot send or receive trade tokens.
+
+### Upgrade notes
+- Pin 0.6.0, rebuild the browser bundle, and read `docs/trades.md`. Use the matching hosted trade service; no dedicated trade or match settlement key is needed for player-approved trades. Registered multiplayer admission still uses its existing setup.
+- Show completion only after Spawn returns `settled`. Offer changes reset both approvals. Approval moves no funds; if either balance becomes insufficient, neither transfer completes. Query the same ID after uncertain responses.
+- This release settles tokens only, not item ownership in an independent game database. Item-only interactions need no SDK payment popup; earned or purchased items require tracked ownership before secure exchange. `spawn-dev` does not emulate two-account settlement.
+
 ## 0.5.0 — 2026-09-16
 
 ### Added

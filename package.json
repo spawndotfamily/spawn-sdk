@@ -1,6 +1,6 @@
 {
   "name": "@spawndotfamily/sdk",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "type": "module",
   "description": "Browser game SDK, isolated local testing, and private-preview publishing tools for Spawn.",
   "license": "MIT",
@@ -46,7 +46,8 @@
     "docs/game-data.md",
     "docs/creator-database.md",
     "docs/troubleshooting.md",
-    "docs/guests.md"
+    "docs/guests.md",
+    "docs/trades.md"
   ],
   "scripts": {
     "build": "tsc",

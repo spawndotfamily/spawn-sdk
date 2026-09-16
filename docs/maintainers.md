@@ -65,3 +65,7 @@ Package releases use `.github/workflows/release.yml`, dispatched on main with th
 npm trusts only spawndotfamily/spawn-sdk, release.yml, environment npm. Configure that GitHub environment to permit main only. No NPM_TOKEN is needed. Keep account 2FA enabled and tightly restrict repository write/admin access, because people able to change this release workflow can publish the package. Pinned official actions and no persisted checkout credentials reduce unnecessary access. External security scans run only when Lucas explicitly requests them; normal release tests still run.
 
 To release: `gh workflow run release.yml --ref main -f version=0.2.9` (replace with the committed version). If npm succeeds but GitHub release-note creation fails, create the missing release at the successful run's exact commit using the same changelog section; do not attempt to republish an existing npm version. If a version already exists, stop and investigate its source/provenance rather than overwriting or silently skipping it.
+
+## Direct trades
+
+Player trades use authenticated launch routes, never match or publishing credentials. Preserve same-account/session/game checks, member-only recipients, immutable quote versions, exact amounts, atomic two-leg settlement and explicit sender approval. Every offer update clears both approvals. No automatic mutation retries. Preserve the distinction between token settlement and independent game item ownership; see [trades](trades.md).

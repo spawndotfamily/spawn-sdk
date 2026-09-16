@@ -103,3 +103,5 @@ The SDK source is [MIT licensed](LICENSE). Spawn branding and third-party game a
 Free games can welcome guests. Log in for cloud saves, official score submissions and transactions. See [guest play](docs/guests.md).
 
 For two-player games, [Listing-token matches](docs/match-payments.md) combine player-approved entries with server-validated settlement. Your game server needs separate match activation; publishing credentials do not move tokens.
+
+Player-to-player token gifts and atomic two-way trades are available through `client.trades`. See the [trade guide](docs/trades.md) for the approval flow and exact scope.

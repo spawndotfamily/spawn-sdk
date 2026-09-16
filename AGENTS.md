@@ -20,6 +20,7 @@ The README is the human-facing introduction. Keep operational instructions here 
 | Connect identity and handle startup | [Integration](docs/integration.md) and [startup](docs/startup.md) |
 | Store progress or display scores | [Game data](docs/game-data.md) and [creator database](docs/creator-database.md) |
 | Build, test, and upload | [Testing](docs/testing.md), [publishing](docs/publishing.md), and [troubleshooting](docs/troubleshooting.md) |
+| Add direct player trades | [Player token trades](docs/trades.md): player-authorized, Listing token, atomic transfers, no guests; independent game items are outside token settlement |
 | Add payments or multiplayer | [Entry payment flow](docs/integration.md#spawn-owned-entry-payment-flow), [token entry](docs/integration.md#configured-token-entry), [multiplayer](docs/multiplayer.md), and [match entry](docs/match-payments.md) |
 | Change or release the SDK | [Maintainer contracts](docs/maintainers.md) |
 

@@ -1,3 +1,5 @@
+import { createTradeMethods, type SpawnTrades, type SpawnTradeAction } from './trades.ts';
+export type { SpawnTrade, SpawnTrades } from './trades.ts';
 /** Browser-only admission transport. Account proof is verified on the creator's server. */
 export type SpawnMultiplayerOptions = {
     platformOrigin: string;
@@ -6,6 +8,7 @@ export type SpawnMultiplayerOptions = {
     onResourcePath?: (path: string) => void;
 };
 export type SpawnMultiplayerClient = {
+    trades: SpawnTrades;
     ready(): Promise<void>;
     requestGrant(): Promise<{
         ticket: string;
@@ -85,10 +88,24 @@ export function createSpawnMultiplayerClient(options: SpawnMultiplayerOptions): 
         reject: (error: Error) => void;
         timer?: ReturnType<typeof setTimeout>;
     } | null = null;
+    const tradeRequests=new Map<string,{resolve:(value:unknown)=>void;reject:(error:Error)=>void;timer:ReturnType<typeof setTimeout>}>();
+    async function sendTrade(action:SpawnTradeAction,payload:Record<string,unknown>):Promise<unknown>{
+        await readyPromise;
+        if(closed||!confirmed)throw new Error('The Spawn launch is closed.');
+        if(tradeRequests.size>=5)throw new Error('Too many pending trade requests.');
+        return new Promise((resolve,reject)=>{
+            const id=crypto.randomUUID();
+            const timer=setTimeout(()=>{tradeRequests.delete(id);reject(new Error('Trade outcome is unknown. Query the same trade ID.'));},action==='accept'?300000:15000);
+            tradeRequests.set(id,{resolve,reject,timer});
+            post({type:PREFIX+'trade-request',requestId:id,action,payload});
+        });
+    }
     function dispose() {
         if (closed)
             return;
         closed = true;
+        for(const t of tradeRequests.values()){clearTimeout(t.timer);t.reject(new Error('The launch closed. Trade outcome is unknown; query its status.'));}
+        tradeRequests.clear();
         clearInterval(readyTimer);
         clearTimeout(handshakeTimer);
         w.removeEventListener('message', offer);
@@ -131,6 +148,14 @@ export function createSpawnMultiplayerClient(options: SpawnMultiplayerOptions): 
             w.removeEventListener('load', loaded);
             clearTimeout(handshakeTimer);
             readyResolve();
+            return;
+        }
+        if(typeof value.requestId==='string'&&tradeRequests.has(value.requestId)){
+            const result=value.type===PREFIX+'trade-result'&&exact(value,['type','version','nonce','requestId','value']);
+            const error=value.type===PREFIX+'trade-error'&&exact(value,['type','version','nonce','requestId','message']);
+            if(!result&&!error)return;
+            const t=tradeRequests.get(value.requestId)!;tradeRequests.delete(value.requestId);clearTimeout(t.timer);
+            if(result)t.resolve(value.value);else t.reject(new Error('Trade request failed. Query its status before retrying.'));
             return;
         }
         if (pendingMatchEntry && value.requestId === pendingMatchEntry.id && value.matchId === pendingMatchEntry.matchId) {
@@ -253,7 +278,7 @@ export function createSpawnMultiplayerClient(options: SpawnMultiplayerOptions): 
         post({ type: PREFIX + 'connection-state', state });
         return !closed;
     }
-    const client = { ready: () => readyPromise, requestGrant, requestMatchEntry, reportConnection, dispose };
+    const client = { trades: createTradeMethods(sendTrade), ready: () => readyPromise, requestGrant, requestMatchEntry, reportConnection, dispose };
     clients.set(w, { platformOrigin, serverOrigin, client });
     w.addEventListener('message', offer);
     w.addEventListener('pagehide', dispose, { once: true });

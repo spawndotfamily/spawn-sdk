@@ -74,3 +74,7 @@ Free published play uses a unique server-issued guest identity when signed out. 
 ## Listing-token player competition
 
 Two-player competition using admitted Listing testnet tokens is supported through the dedicated server match API in SDK 0.5.0. This is not limited to TEST demo points. Follow [match payments](match-payments.md) for server activation, grant verification, player confirmation, exact amounts, escrow and authoritative settlement. No house-funded dealer is required. Browser-reported wins and ordinary publishing credentials never authorize payouts.
+
+## Direct player trades
+
+SDK 0.6.0 supports player-authorized gifts and atomic two-way transfers of the Listing testnet token through `client.trades`. Both participants must be signed-in Spawn members; guests cannot send or receive. Read [the trade guide](trades.md) before implementation. Match escrow is a different API; game item ownership is not included in token settlement.
