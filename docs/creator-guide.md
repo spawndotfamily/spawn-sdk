@@ -70,3 +70,7 @@ Spawn supplies the mascot loading screen while it checks the account, profile an
 ## Guests
 
 Free published play uses a unique server-issued guest identity when signed out. Account scores, saves and transactions require sign-in. Support `identity().isGuest` and test Guest in spawn-dev. Read [guest play](guests.md); never replace failed authentication with a made-up player.
+
+## Listing-token player competition
+
+Two-player competition using admitted Listing testnet tokens is supported through the dedicated server match API in SDK 0.5.0. This is not limited to TEST demo points. Follow [match payments](match-payments.md) for server activation, grant verification, player confirmation, exact amounts, escrow and authoritative settlement. No house-funded dealer is required. Browser-reported wins and ordinary publishing credentials never authorize payouts.

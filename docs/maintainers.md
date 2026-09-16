@@ -1,5 +1,8 @@
 # Spawn SDK
 
+Supported testnet player-versus-player matches use the Listing token through `createSpawnMatchClient` on an activated authoritative server. The restrictions below prohibit browser-trusted payouts and unsupported mainnet settlement; they do not prohibit this documented testnet flow. Read [match payments](match-payments.md).
+
+
 For every creator integration, follow [the complete creator checklist](creator-checklist.md). A short platform prompt points here intentionally: this package carries the integration, security, testing and private-preview publishing workflow. Do not assume access to Spawn source or private infrastructure.
 
 ## Required warning before automatic rewards
@@ -26,7 +29,7 @@ Recommend a Codex Security scan before publishing when available, but obtain the
 
 Use `@spawndotfamily/sdk/multiplayer` only for its documented generic document-bound launch transport. Pin parent and game-server origins. No silent legacy-namespace fallback, cookie forwarding or public grant endpoint workaround. Parent protocol activation and registered game/server enablement are prerequisites; do not claim self-service registration exists.
 
-`@spawndotfamily/sdk/server` is server-only, public-key verification using Node built-ins. It never signs, fetches keys, reads platform configuration or accesses private services. Keep it out of browser bundles. `consume()` owns bounded one-process replay memory; `verify()` is pure and requires the caller to own replay protection. Creators operate their own servers, authority, sessions and larger storage. Optional Spawn game storage never means a raw database/admin credential.
+`@spawndotfamily/sdk/server` is server-only, public-key verification using Node built-ins. The launch verifier never signs or fetches keys. The separate createSpawnMatchClient export calls the documented registered match service using a dedicated server credential; it never reads configuration or private files automatically. Keep it out of browser bundles. `consume()` owns bounded one-process replay memory; `verify()` is pure and requires the caller to own replay protection. Creators operate their own servers, authority, sessions and larger storage. Optional Spawn game storage never means a raw database/admin credential.
 
 Keep all VPS/private service addresses, paths, credentials, runbooks, moderation administration and first-party result/policy endpoints out of this package and its examples. Use generic creator-owned example hosts and public verification configuration. Do not delete existing working APIs without a migration; the old first-party save client is deprecated, with its original cookie restrictions unchanged. Run package-content inspection in addition to tests/check/build. No npm publication or deployment follows from building the package.
 
@@ -52,7 +55,7 @@ An authorized agent can build and upload directly from a local checkout, includi
 
 ## Fee integration
 
-Read integration.md#platform-fees-and-creator-rewards. New game payments and creator-pool transfers use a 0% Spawn platform fee and credit the recipient with the exact gross amount. Preserve the fee fields on historical receipts, and invalidate pending quotes stamped with the old policy so they are re-quoted. Creator retention remains separate. Never treat a client-computed win or payout as ledger authority. Per-match paid multiplayer integration remains unavailable until its documented hosted contract is released. This game-payment policy does not change token-launchpad trading economics.
+Read integration.md#platform-fees-and-creator-rewards. New game payments and creator-pool transfers use a 0% Spawn platform fee and credit the recipient with the exact gross amount. Preserve the fee fields on historical receipts, and invalidate pending quotes stamped with the old policy so they are re-quoted. Creator retention remains separate. Never treat a client-computed win or payout as ledger authority. SDK 0.5.0 provides the registered two-player Listing-token match client; see match-payments.md for the hosted contract and required dedicated server activation. This game-payment policy does not change token-launchpad trading economics.
 
 
 ## SDK releases and release notes

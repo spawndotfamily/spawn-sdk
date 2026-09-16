@@ -72,3 +72,7 @@ Default to the CLI upload from the creator's computer; the agent does that step,
 Record a real start → gameplay → finish/retry loop in a browser, plus input, asset/console errors and chosen SDK features. If you cannot operate a browser, say so; a successful build or spawn-publish check is not a play test. Publish only the exact uploaded build that passed its automated check and was play-tested.
 
 Publication status and TEST currency are independent. Do not use environment: sandbox to display Private preview, replace a connected player with a fake account or enable any production bypass.
+
+## Listing-token player competition
+
+Two-player competition using admitted Listing testnet tokens is supported through the dedicated server match API in SDK 0.5.0. This is not limited to TEST demo points. Follow [match payments](match-payments.md) for server activation, grant verification, player confirmation, exact amounts, escrow and authoritative settlement. No house-funded dealer is required. Browser-reported wins and ordinary publishing credentials never authorize payouts.

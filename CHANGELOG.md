@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.5.0 — 2026-09-16
+
+### Added
+- `createSpawnMatchClient` and `SpawnMatchRequestError` from `@spawndotfamily/sdk/server` for registered two-player matches: create, status, capture, heartbeat, cancel and settle.
+- Exact decimal entry and payout amounts with the asset resolved from Listing; player-approved reservations, server-owned outcomes and zero Spawn transfer fees.
+- An agent setup guide covering dedicated server activation, verified launch identities, the shared confirmation overlay, escrow deadlines, full-pot settlement, a one-hour absolute match limit and uncertain-outcome recovery.
+
+### Changed
+- Clarified that supported Listing tokens on Robinhood Chain Testnet can fund player-versus-player matches; they must not be silently replaced with local play points or confused with mainnet settlement.
+- GitHub release bodies no longer repeat the SDK version heading already displayed as the release title.
+
+### Upgrade notes
+- Install and pin 0.5.0, rebuild the browser bundle, and read `docs/match-payments.md` plus `AGENTS.md`. Import the match client only on your authoritative server; browser code continues using `requestMatchEntry({ matchId })`.
+- Requires the matching hosted registered-match service and explicit per-project server activation with a dedicated match credential. Installing the SDK, publishing a game, or registering transport alone does not grant payout authority. No self-service match-key issuance is included.
+- The Listing controls the token, while `create({ amount })` controls each player's separate match entry. Permanent game access remains a distinct purchase. Match settlement can distribute only the complete reserved pot to the two admitted roster players.
+- Mutations never automatically retry. On an unknown outcome, query the same match ID and reconcile before proceeding. The existing Rob the Rich duel/raid integration remains separate and compatible.
+
 ## 0.4.1 — 2026-09-16
 
 ### Added

@@ -101,3 +101,5 @@ Multiplayer requires your own authoritative game server and an enabled Spawn int
 The SDK source is [MIT licensed](LICENSE). Spawn branding and third-party game assets are not included in that license.
 
 Free games can welcome guests. Log in for cloud saves, official score submissions and transactions. See [guest play](docs/guests.md).
+
+For two-player games, [Listing-token matches](docs/match-payments.md) combine player-approved entries with server-validated settlement. Your game server needs separate match activation; publishing credentials do not move tokens.

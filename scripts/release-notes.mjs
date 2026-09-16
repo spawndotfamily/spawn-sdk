@@ -13,4 +13,4 @@ const body = matches[0].slice(matches[0].indexOf('\n') + 1).trim();
 for (const heading of ['Added', 'Changed', 'Upgrade notes']) {
   if (!body.includes(`### ${heading}\n`)) throw new Error(`Missing release notes: ${heading}`);
 }
-console.log(`# SDK ${version}\n\n${body}\n\n[Install from npm](https://www.npmjs.com/package/@spawndotfamily/sdk/v/${version}) · [Release checks](https://github.com/spawndotfamily/spawn-sdk/actions/workflows/release.yml)`);
+console.log(`${body}\n\n[Install from npm](https://www.npmjs.com/package/@spawndotfamily/sdk/v/${version}) · [Release checks](https://github.com/spawndotfamily/spawn-sdk/actions/workflows/release.yml)`);

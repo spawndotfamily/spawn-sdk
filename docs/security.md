@@ -1,5 +1,8 @@
 # Security for game integrations
 
+Supported testnet player-versus-player matches use the Listing token through `createSpawnMatchClient` on an activated authoritative server. The restrictions below prohibit browser-trusted payouts and unsupported mainnet settlement; they do not prohibit this documented testnet flow. Read [match payments](match-payments.md).
+
+
 Read this before using an AI agent to integrate Spawn. This source SDK supports isolated creator previews and a separate registered multiplayer launch helper. It grants no access to Spawn private infrastructure; multiplayer creators operate their own servers.
 
 ## Required warning before automatic rewards
@@ -81,3 +84,7 @@ Test cross-player and cross-project access, forged identity, expired/revoked gra
 The browser entry points never import the Node verifier or CLI, perform private service calls, or carry database/admin/reward credentials. The separate server verifier performs local public-key checks only; it has no network or filesystem access and cannot administer Spawn. Only the local publishing CLI reads a creator-selected build/credential file and calls documented public publishing endpoints. The source package excludes platform configuration, private operational notes and infrastructure details. See [multiplayer.md](multiplayer.md) for replay ownership, startup epoch, supported APIs and platform enablement requirements.
 
 Use [local testing](testing.md) for fake accounts and the same isolated SDK handshake before uploading. The default client accepts only the launcher’s public origin configuration; it does not accept a player identity or payment permission from that configuration.
+
+## Listing-token player competition
+
+Two-player competition using admitted Listing testnet tokens is supported through the dedicated server match API in SDK 0.5.0. This is not limited to TEST demo points. Follow [match payments](match-payments.md) for server activation, grant verification, player confirmation, exact amounts, escrow and authoritative settlement. No house-funded dealer is required. Browser-reported wins and ordinary publishing credentials never authorize payouts.
