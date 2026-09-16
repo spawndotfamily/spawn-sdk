@@ -8,8 +8,8 @@ This is separate from buying permanent access to the game. The Listing chooses t
 
 1. Configure the game's token in Listing using the workspace or documented `spawn-publish token` commands. Free game access (`entryAmount: 0`) can still have separately approved paid matches.
 2. Operate an authoritative game server that verifies Spawn launch grants, owns the game state and validates outcomes. A browser's claimed win or score is insufficient.
-3. Have Spawn register that project's server origin, audience and a **dedicated match server credential**. Multiplayer transport registration alone does not enable settlement. Publishing and storage credentials do not grant settlement authority. This activation is an operator setup step, not a game-publication review. There is no self-service match-key issuance command in this release.
-4. Use a cryptographically random 32-byte credential encoded as 43 base64url characters, provisioned through a private channel. Keep the credential in private server configuration. Never put it in browser code, the downloaded publishing file, Git, chat or logs. Keep `@spawndotfamily/sdk/server` out of browser bundles.
+3. Follow [creator server setup](server-setup.md) using fresh downloaded credentials with `server:configure`. Run `spawn-publish server status`, then `server enable` with the creator-approved origin/path/audience and current version. No Spawn operator provisioning or VPS access is needed.
+4. The CLI generates a dedicated match key locally, saves it privately and registers only its hash. Install `match.key` and the public `verification.json` on the creator's own server. Existing storage keys are preserved. Keep all private credentials out of browser code, Git, chat and logs.
 5. Test both players' confirmation, insufficient funds, cancellation, disconnect, expiry, draw and duplicate settlement before inviting players. `spawn-dev` does not simulate this server escrow API; use an activated private preview or an isolated integration service.
 
 If activation is missing, tell the creator exactly which server-registration dependency is missing. You can still build and publish the game. Do not invent endpoints, silently use fake currency, or claim automatic settlement is active.
@@ -26,7 +26,7 @@ Continue the work that does not need activation: implement the authoritative gam
 | Browser ready | Bundle the SDK, publish the tested browser release, and record its release ID. |
 | Server deployed | Record the actual running server build/revision and verify it includes the new match coordinator. A successful browser upload is not this evidence. |
 | Server admitted | Verify launch grants against the registered project, server origin and audience. Reject guests for token matches; use the verified grant's session ID as `launchId`. |
-| Match activation | Operator registers a dedicated match credential for this project; install it only in the authorized server's private configuration. Publishing or storage credentials cannot replace it. |
+| Match activation | Run SDK server enable with a fresh creator credential; install the locally generated match key only in the creator server's private configuration. Publishing or storage credentials cannot replace it. |
 | End-to-end verified | Two distinct signed-in players confirm the exact Listing-token entries, server observes both reservations, capture succeeds, and settlement or refund is confirmed by Spawn. |
 
 When operator setup is the remaining dependency, provide this **non-secret handoff**:
@@ -37,7 +37,7 @@ When operator setup is the remaining dependency, provide this **non-secret hando
 - Server configuration variable names used for project ID and dedicated match credential, plus which authorized server operator will install it. Do not include credential values or private infrastructure details.
 - Test results and the exact blocked stage/status. Redact credentials and player grants from errors.
 
-There is no self-service match-key issuance or activation endpoint in this SDK release. Do not invent a command, reuse the publishing key, or put payout credentials in a browser bundle to bypass that boundary. If the creator has assigned server deployment/activation to another operator, stop at this handoff for those actions and continue unrelated game work. Installing this SDK cannot activate a game by itself.
+Self-service registration and match activation are available in SDK 0.7.0 through [server setup](server-setup.md). A publishing key authorizes setup only when it has the new scope; it is never accepted as a match settlement key. Installing the SDK alone does not configure or deploy the game. If another operator owns the creator's game server, provide the deployment handoff for that server; no Spawn operator action is part of normal setup.
 
 Keep token matchmaking unavailable with a clear “Token matches are being set up” message until setup succeeds. A local test pass does not prove hosted activation. Do not create a paid match merely as a readiness probe: real match verification requires two consenting members and the normal confirmation flow. After a timeout, reconcile the same match ID before retrying any mutation.
 

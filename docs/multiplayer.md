@@ -4,7 +4,7 @@ Spawn does not run creator game servers or expose private platform services thro
 
 ## Before integration
 
-Multiplayer must be explicitly enabled for your game by Spawn. Self-service server registration is not implemented. Supply your HTTPS game origin and WSS endpoint through the approved registration process. Obtain the **public** verification configuration for that game: issuer, audience, game ID, environment, key IDs and Ed25519 public PEM keys. None of this requires access to Spawn's hosting account, VPS, private service URLs or signing key.
+Use [creator server setup](server-setup.md) with fresh `server:configure` credentials to register your HTTPS game origin, WebSocket path and audience. The SDK saves public verification configuration and a separate private match key locally. Setup uses a project-scoped API; it grants no access to Spawn's hosting account, VPS, private service URLs or signing key.
 
 The SDK's generic multiplayer document protocol must also be enabled on the platform. A package install alone cannot make a game eligible or change the frame's connection allowlist. Uploaded preview saves and registered multiplayer launches currently use distinct document contracts; do not assume optional save storage is exposed in a multiplayer frame unless that capability is enabled for it.
 

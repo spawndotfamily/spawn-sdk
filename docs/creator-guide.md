@@ -15,7 +15,7 @@ One prompt can prepare, test and upload a **private preview**. After the automat
 | Creator pools | Dashboard top-ups, withdrawals and manual rewards | New game payments and pool transfers are one-to-one with a 0% Spawn platform fee. Historical receipts retain their recorded fee fields. Pool balance is not a guaranteed prize. No general browser payout API. |
 | Listing and images | Name, description, supported details and image edits for this game | Use scoped CLI listing/image commands and expectedVersion. No ownership, approval, platform-fee or other-project pricing changes. |
 | Local testing | Fake players, balances, pool controls and fixed TEST receipts | Use spawn-dev on the finished folder; it does not simulate Listing-configured token purchases. Keep test accounts out of shipped game code. |
-| Multiplayer | Registered integration with a creator-operated server | Read multiplayer/startup documentation. Registration is not self-service; server authority and settlement are separate from a browser handshake. |
+| Multiplayer | Registered integration with a creator-operated server | Read multiplayer/startup documentation. Use the self-service server setup CLI; server authority and settlement are separate from a browser handshake. |
 | Friends and chat | Platform UI | No game SDK access to private chat, friends administration or moderation. |
 | Testnet wallets | Spawn manages supported testnet deposits and withdrawals | Game payments use deposited platform balances. No game-side custody keys or on-chain transfer API. Mainnet is not supported. |
 
@@ -82,3 +82,7 @@ SDK 0.6.0 supports player-authorized gifts and atomic two-way transfers of the L
 ## Multiplayer release handoff
 
 Publishing uploads browser assets only; it does not deploy the authoritative server or activate payouts. Follow [the match deployment checklist](match-payments.md#agent-deployment-and-activation-handoff). Report browser release, running server revision, registration/activation and two-member settlement verification separately. Prepare the server artifact and non-secret handoff when another operator owns deployment; do not claim the SDK lacks matches just because setup is incomplete.
+
+## Creator server registration
+
+SDK 0.7.0 includes [self-service server setup](server-setup.md). Fresh `server:configure` credentials authorize settings for the creator's own game; the SDK generates separate private match credentials locally and registers only hashes. No Spawn VPS access is needed. Configure through the CLI, deploy the creator's own server, then verify two-member settlement before claiming completion. Setup does not authorize spending for players or grant platform administration.

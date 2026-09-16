@@ -1,3 +1,4 @@
+import { parseServerCommand, runServerCommand, SERVER_USAGE, type ServerCommand } from './server-setup.ts';
 import { parseDatabaseCommand, runDatabaseCommand, DATABASE_USAGE, type DatabaseCommand } from './database.ts';
 import { readBoundedFile } from './files.ts';
 import { PublishCliError, PROJECT_ID_PATTERN, normalizeApiUrl, validatePublishConfig, isRecord, redact, requestJson } from './api.ts';
@@ -117,6 +118,7 @@ type Command =
   | DatabaseCommand
   | ListingCommand
   | TokenCommand
+  | ServerCommand
   | { kind: 'help' }
   | { kind: 'check'; directory: string }
   | { kind: 'publish'; directory: string; sourceCommit?: string; credentialsPath?: string }
@@ -131,6 +133,7 @@ export const CLI_USAGE = `Usage:
   spawn-publish status <release-id> [--credentials <file>]
 ${LISTING_USAGE}
 ${TOKEN_USAGE}
+${SERVER_USAGE}
 ${DATABASE_USAGE}
 `;
 
@@ -397,7 +400,7 @@ export async function readCredentialsFile(credentialsPath: string, now = Date.no
   if (!Number.isFinite(expiresAt)) throw new PublishCliError('The credentials file has an invalid expiry.');
   if (expiresAt <= now) throw new PublishCliError('The credentials file has expired.');
 
-  if (parsed.scopes !== undefined && (!Array.isArray(parsed.scopes) || parsed.scopes.length > 8 || parsed.scopes.some(scope => typeof scope !== 'string' || !['build:read', 'build:upload', 'build:publish', 'listing:write', 'data:read', 'data:write', 'data:configure', 'token:configure'].includes(scope)) || new Set(parsed.scopes).size !== parsed.scopes.length)) {
+  if (parsed.scopes !== undefined && (!Array.isArray(parsed.scopes) || parsed.scopes.length > 9 || parsed.scopes.some(scope => typeof scope !== 'string' || !['build:read', 'build:upload', 'build:publish', 'listing:write', 'data:read', 'data:write', 'data:configure', 'token:configure', 'server:configure'].includes(scope)) || new Set(parsed.scopes).size !== parsed.scopes.length)) {
     throw new PublishCliError('The credentials file has invalid scopes.');
   }
   const config = {
@@ -485,6 +488,8 @@ export function parseCommand(argv: string[]): Command {
   }
 
   if (positional[0] === 'database') return parseDatabaseCommand(positional, credentialsPath);
+
+  if (positional[0] === 'server') return parseServerCommand(positional, credentialsPath);
 
   if (positional[0] === 'token') return parseTokenCommand(positional, credentialsPath);
 
@@ -713,6 +718,12 @@ export async function main(
 
     if (command.kind === 'database') {
       const response = await runDatabaseCommand(config, command, fetchImplementation);
+      output.log(redact(JSON.stringify(response), publishKey));
+      return 0;
+    }
+
+    if (command.kind === 'server') {
+      const response = await runServerCommand(config, command, fetchImplementation);
       output.log(redact(JSON.stringify(response), publishKey));
       return 0;
     }

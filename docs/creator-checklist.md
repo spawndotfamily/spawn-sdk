@@ -84,3 +84,7 @@ For direct transfers, read [trades](trades.md). Use `client.trades`, current off
 ## Multiplayer release handoff
 
 Publishing uploads browser assets only; it does not deploy the authoritative server or activate payouts. Follow [the match deployment checklist](match-payments.md#agent-deployment-and-activation-handoff). Report browser release, running server revision, registration/activation and two-member settlement verification separately. Prepare the server artifact and non-secret handoff when another operator owns deployment; do not claim the SDK lacks matches just because setup is incomplete.
+
+## Creator server registration
+
+SDK 0.7.0 includes [self-service server setup](server-setup.md). Fresh `server:configure` credentials authorize settings for the creator's own game; the SDK generates separate private match credentials locally and registers only hashes. No Spawn VPS access is needed. Configure through the CLI, deploy the creator's own server, then verify two-member settlement before claiming completion. Setup does not authorize spending for players or grant platform administration.

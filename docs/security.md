@@ -90,3 +90,7 @@ Use [local testing](testing.md) for fake accounts and the same isolated SDK hand
 Two-player competition using admitted Listing testnet tokens is supported through the dedicated server match API in SDK 0.5.0. This is not limited to TEST demo points. Follow [match payments](match-payments.md) for server activation, grant verification, player confirmation, exact amounts, escrow and authoritative settlement. No house-funded dealer is required. Browser-reported wins and ordinary publishing credentials never authorize payouts.
 
 Direct trades require two authenticated Spawn members and active same-game launches. Guest recipients are rejected before any balance movement. Each sender approves exact Listing-token terms in Spawn; changing offers invalidates consent. Both transfers commit together or neither. A browser response must not authorize item delivery from a separate game database. See [trades](trades.md).
+
+## Creator server registration
+
+SDK 0.7.0 includes [self-service server setup](server-setup.md). Fresh `server:configure` credentials authorize settings for the creator's own game; the SDK generates separate private match credentials locally and registers only hashes. No Spawn VPS access is needed. Configure through the CLI, deploy the creator's own server, then verify two-member settlement before claiming completion. Setup does not authorize spending for players or grant platform administration.

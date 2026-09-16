@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.7.0 — 2026-09-16
+
+### Added
+- Creator self-service `spawn-publish server status`, `server enable` and `server disable` commands. Register the game's HTTPS server, audience and dedicated match authority through fresh downloaded credentials with `server:configure`; no Spawn VPS access or operator-created match key is required.
+- Locally generated private key files, public launch-verification configuration, safe retry reconciliation, versioned rotation and immediate match-key revocation.
+- Packaged `docs/server-setup.md` with an end-to-end agent workflow, permission boundaries, failure handling and separate server deployment/settlement verification.
+
+### Changed
+- Replaces the manual operator-activation instructions with the generic creator setup flow. Existing games preserve their storage credentials when enabling or rotating match authority.
+- Server setup sends only key hashes to Spawn and grants no OS commands, SSH, arbitrary file access, other-game authority or player payment approval.
+
+### Upgrade notes
+- Pin 0.7.0 and download fresh game credentials. Old publishing keys do not gain `server:configure` by editing the local file. Read `docs/server-setup.md` before enabling matches.
+- Configure the Listing token, obtain the current server settings version, then run server enable with explicit creator confirmation and a private output directory. Preserve files for retry; use a new directory for deliberate rotation.
+- Deploy the authoritative game server yourself and install the generated files privately. SDK installation/browser publication alone do not deploy it. Verify two consenting members' payouts and refunds separately; setup moves no tokens.
+- Requires the matching hosted creator setup API. If it is unavailable, report that platform dependency; never substitute privileged Spawn infrastructure access. Direct trades continue using player approvals without a match key.
+
 ## 0.6.1 — 2026-09-16
 
 ### Added

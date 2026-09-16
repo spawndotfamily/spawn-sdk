@@ -69,3 +69,7 @@ To release: `gh workflow run release.yml --ref main -f version=0.2.9` (replace w
 ## Direct trades
 
 Player trades use authenticated launch routes, never match or publishing credentials. Preserve same-account/session/game checks, member-only recipients, immutable quote versions, exact amounts, atomic two-leg settlement and explicit sender approval. Every offer update clears both approvals. No automatic mutation retries. Preserve the distinction between token settlement and independent game item ownership; see [trades](trades.md).
+
+## Creator server registration
+
+SDK 0.7.0 includes [self-service server setup](server-setup.md). Fresh `server:configure` credentials authorize settings for the creator's own game; the SDK generates separate private match credentials locally and registers only hashes. No Spawn VPS access is needed. Configure through the CLI, deploy the creator's own server, then verify two-member settlement before claiming completion. Setup does not authorize spending for players or grant platform administration.
