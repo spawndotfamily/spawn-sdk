@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.7.1 — 2026-09-17
+
+### Added
+- Structured match diagnostics: stable SDK error codes, bounded public rejection reasons, operation/match/project context, optional platform code/request ID and retry delay, plus private-journal `toJSON()`.
+- Packaged, tested match-creation recovery example and `docs/match-recovery.md`, including uncertain creation followed by a 404 and exact same-ID cancellation before replacement.
+
+### Changed
+- The server match client now reads bounded API error JSON instead of discarding the useful reason. Malformed error bodies retain HTTP status; raw responses, credential reflections and transport exception text stay excluded.
+- HTTP 408 mutations are uncertain. A later status 404 or same-ID create rejection never proves an earlier request cannot finish. No automatic mutation retries were added.
+
+### Upgrade notes
+- Pin `0.7.1`, rebuild and redeploy your authoritative server to use the new errors. Read AGENTS.md, docs/match-payments.md and docs/match-recovery.md; journal the original definition and each error before attempting recovery.
+- Keep existing unresolved records. Use the same saved ID, wager and roster; allow replacement only after confirmed cancellation. Expired launches or service failures can still require platform investigation. No absent-ID tombstone endpoint is introduced.
+- SDK-only update: no game files, platform logging or server configuration are deployed by installing it. Optional platform codes and request IDs appear only when the hosted API supplies them. Historical discarded reasons cannot be reconstructed by this release.
+
 ## 0.7.0 — 2026-09-16
 
 ### Added

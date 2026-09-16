@@ -73,3 +73,7 @@ Player trades use authenticated launch routes, never match or publishing credent
 ## Creator server registration
 
 SDK 0.7.0 includes [self-service server setup](server-setup.md). Fresh `server:configure` credentials authorize settings for the creator's own game; the SDK generates separate private match credentials locally and registers only hashes. No Spawn VPS access is needed. Configure through the CLI, deploy the creator's own server, then verify two-member settlement before claiming completion. Setup does not authorize spending for players or grant platform administration.
+
+## Fresh-agent acceptance
+
+For SDK fixes, require a creator with only the installed package and ordinary scoped credentials to follow the packaged contract. Missing methods, lost diagnostics and missing recovery instructions are SDK gaps. Distinguish correct requests rejected by the platform from game code that violates the contract. Include a regression and upgrade notes; never prove SDK completeness by privately editing a creator game or its server. See [match recovery](match-recovery.md).

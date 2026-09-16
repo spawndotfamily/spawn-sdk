@@ -1,3 +1,5 @@
+import { SpawnMatchRequestError, httpCode, publicErrorDetails } from "./match-errors.ts";
+export { SpawnMatchRequestError } from "./match-errors.ts";
 /** Server-only client for operator-enabled, per-game Listing-token match escrow. */
 export type SpawnMatchPlayer = { playerId: string; launchId: string };
 export type SpawnMatchDefinition = {
@@ -66,16 +68,6 @@ export type SpawnMatchClientOptions = {
   /** Optional server transport, useful for isolated tests. Must enforce the supplied request options. */
   fetch?: typeof globalThis.fetch;
 };
-export class SpawnMatchRequestError extends Error {
-  readonly status: number | undefined;
-  readonly outcomeUnknown: boolean;
-  constructor(message: string, status: number | undefined, outcomeUnknown: boolean) {
-    super(message);
-    this.name = "SpawnMatchRequestError";
-    this.status = status;
-    this.outcomeUnknown = outcomeUnknown;
-  }
-}
 const uuid = (value: unknown): value is string =>
   typeof value === "string" &&
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
@@ -165,6 +157,7 @@ export function createSpawnMatchClient(options: SpawnMatchClientOptions) {
     const mutation = payload !== undefined;
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeout);
+    let responseStatus: number | undefined;
     try {
       const response = await transport(
         base + (action === "create" ? "" : "/" + matchId + (action ? "/" + action : "")),
@@ -182,17 +175,18 @@ export function createSpawnMatchClient(options: SpawnMatchClientOptions) {
           ...(mutation ? { body: JSON.stringify(payload) } : {}),
         },
       );
+      responseStatus = response.status;
       if (!response.ok) {
-        await response.body?.cancel();
-        const unknown = mutation && response.status >= 500;
+        let errorBody: unknown;
+        try { errorBody = await boundedJson(response); } catch { /* Keep the known HTTP status. */ }
+        const details = publicErrorDetails(errorBody, response, credential);
         throw new SpawnMatchRequestError(
-          response.status === 401 || response.status === 403
+          details.reason ?? (response.status === 401 || response.status === 403
             ? "Dedicated match server authorization is required."
-            : response.status === 503
-              ? "Match settlement is unavailable. Check game activation and query match status before retrying."
-              : "Spawn rejected the match request. Check its status and configuration.",
+            : "Spawn rejected the match request. Check its status and configuration."),
           response.status,
-          unknown,
+          mutation && (response.status >= 500 || response.status === 408),
+          { ...details, code: httpCode(response.status), action: action || "status", matchId, projectId: project },
         );
       }
       const value = await boundedJson(response);
@@ -224,8 +218,10 @@ export function createSpawnMatchClient(options: SpawnMatchClientOptions) {
         mutation
           ? "Match outcome is unknown. Query status with the same match ID before taking another action."
           : "Could not read match status.",
-        undefined,
+        responseStatus,
         mutation,
+        { code: controller.signal.aborted ? "REQUEST_TIMEOUT" : responseStatus === undefined ? "TRANSPORT_ERROR" : "INVALID_RESPONSE",
+          action: action || "status", matchId, projectId: project },
       );
     } finally {
       clearTimeout(timer);

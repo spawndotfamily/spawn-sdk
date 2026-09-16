@@ -43,6 +43,10 @@ Keep token matchmaking unavailable with a clear “Token matches are being set u
 
 Direct player gifts and two-way token trades use [the trade API](trades.md), not server-owned match settlement. They need player approval and authenticated member recipients, but no dedicated match key. Both flows transfer deposited Spawn platform balances; on-chain withdrawal is a separate Wallet action.
 
+## Error handling before implementation
+
+Read [match errors and recovery](match-recovery.md). Save the exact match definition before create and retain each structured error. A status404 after an uncertain create is not cancellation. The tested recovery example uses the same immutable ID and requires confirmed cancellation before a replacement. Do not open player approval until create succeeds.
+
 ## Server lifecycle
 
 ```js
@@ -66,7 +70,7 @@ await matches.create({
     { playerId: playerB.playerId, launchId: playerB.sessionId },
   ],
 });
-// Send this matchId to those two admitted players.
+// Only after create succeeds, send this matchId to those two admitted players.
 // In your match coordinator, poll until both entries are reserved.
 let state = await matches.status(matchId);
 while (state.status === 'pending' && !state.allConfirmed) {

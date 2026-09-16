@@ -19,3 +19,7 @@ SDK 0.2.11's CLI checks relative static imports, re-exports and literal dynamic 
 | TLS reset / fetch failed before an HTTP response | Separate network reachability from packaging. Preserve the exact error, endpoint, time and affected network; no credentials in diagnostics. An npm install can succeed while the upload API remains unreachable. |
 
 WARP/VPN success changes the network path and is a workaround, not proof of a particular WAF rule and not a platform-wide fix. Never disable TLS verification, send creator credentials over HTTP, guess an alternate upload host or bypass the CLI's trusted-origin check. Report affected-network failures to Spawn; only an explicitly configured and trusted endpoint may receive the credential. A working private preview must show trusted identity and the single Spawn-owned overlay, not a game-drawn imitation.
+
+## Match creation failed before approval
+
+Read [match recovery](match-recovery.md) and preserve `SpawnMatchRequestError.toJSON()` privately with the original definition. Missing approval UI can mean create never succeeded. Do not replace an uncertain attempt after a 404; use the same-ID recovery contract. The SDK now retains the public rejection reason; it cannot reconstruct an earlier discarded reason.
