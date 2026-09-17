@@ -1,3 +1,5 @@
+import { localBalanceOrigin, createTokenMethods, type SpawnTokens } from './token-balances.ts';
+export type { SpawnTokens, SpawnTokenBalance, SpawnTokenBalances, SpawnBalancePlayer } from './token-balances.ts';
 import { createTradeMethods, type SpawnTrades, type SpawnTradeAction } from './trades.ts';
 export type { SpawnTrade, SpawnTrades } from './trades.ts';
 /** Browser-only admission transport. Account proof is verified on the creator's server. */
@@ -9,6 +11,7 @@ export type SpawnMultiplayerOptions = {
 };
 export type SpawnMultiplayerClient = {
     trades: SpawnTrades;
+    tokens: SpawnTokens;
     ready(): Promise<void>;
     requestGrant(): Promise<{
         ticket: string;
@@ -88,15 +91,15 @@ export function createSpawnMultiplayerClient(options: SpawnMultiplayerOptions): 
         reject: (error: Error) => void;
         timer?: ReturnType<typeof setTimeout>;
     } | null = null;
-    const tradeRequests=new Map<string,{resolve:(value:unknown)=>void;reject:(error:Error)=>void;timer:ReturnType<typeof setTimeout>}>();
+    const tradeRequests=new Map<string,{action:SpawnTradeAction;resolve:(value:unknown)=>void;reject:(error:Error)=>void;timer:ReturnType<typeof setTimeout>}>();
     async function sendTrade(action:SpawnTradeAction,payload:Record<string,unknown>):Promise<unknown>{
         await readyPromise;
         if(closed||!confirmed)throw new Error('The Spawn launch is closed.');
         if(tradeRequests.size>=5)throw new Error('Too many pending trade requests.');
         return new Promise((resolve,reject)=>{
             const id=crypto.randomUUID();
-            const timer=setTimeout(()=>{tradeRequests.delete(id);reject(new Error('Trade outcome is unknown. Query the same trade ID.'));},action==='accept'?300000:15000);
-            tradeRequests.set(id,{resolve,reject,timer});
+            const timer=setTimeout(()=>{tradeRequests.delete(id);reject(new Error(action === 'balances' ? 'Token balance unavailable. Retry this read after reconnecting.' : 'Trade outcome is unknown. Query the same trade ID.'));},action==='accept'?300000:15000);
+            tradeRequests.set(id,{action,resolve,reject,timer});
             post({type:PREFIX+'trade-request',requestId:id,action,payload});
         });
     }
@@ -104,7 +107,7 @@ export function createSpawnMultiplayerClient(options: SpawnMultiplayerOptions): 
         if (closed)
             return;
         closed = true;
-        for(const t of tradeRequests.values()){clearTimeout(t.timer);t.reject(new Error('The launch closed. Trade outcome is unknown; query its status.'));}
+        for(const t of tradeRequests.values()){clearTimeout(t.timer);t.reject(new Error(t.action === 'balances' ? 'Token balance unavailable. Reopen the game and retry this read.' : 'The launch closed. Trade outcome is unknown; query its status.'));}
         tradeRequests.clear();
         clearInterval(readyTimer);
         clearTimeout(handshakeTimer);
@@ -278,7 +281,7 @@ export function createSpawnMultiplayerClient(options: SpawnMultiplayerOptions): 
         post({ type: PREFIX + 'connection-state', state });
         return !closed;
     }
-    const client = { trades: createTradeMethods(sendTrade), ready: () => readyPromise, requestGrant, requestMatchEntry, reportConnection, dispose };
+    const client = { tokens: createTokenMethods(payload => sendTrade('balances', payload), localBalanceOrigin(platformOrigin)), trades: createTradeMethods(sendTrade), ready: () => readyPromise, requestGrant, requestMatchEntry, reportConnection, dispose };
     clients.set(w, { platformOrigin, serverOrigin, client });
     w.addEventListener('message', offer);
     w.addEventListener('pagehide', dispose, { once: true });

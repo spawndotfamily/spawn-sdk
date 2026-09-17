@@ -26,7 +26,7 @@ export type SpawnTradeCreate = {
   recipientLaunchId: string;
   amount: string;
 };
-export type SpawnTradeAction = "context" | "create" | "view" | "offer" | "accept" | "cancel";
+export type SpawnTradeAction = "balances" | "context" | "create" | "view" | "offer" | "accept" | "cancel";
 export type SpawnTrades = {
   context(): Promise<{ playerId: string; launchId: string; projectId: string }>;
   create(input: SpawnTradeCreate): Promise<SpawnTrade>;

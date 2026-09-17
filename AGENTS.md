@@ -63,3 +63,7 @@ A new downloaded credential with `server:configure` can register only this game'
 ## Match creation failures
 
 Before integrating matches, read [match errors and recovery](docs/match-recovery.md). Persist the exact create definition before sending; only open player approval after Spawn confirms creation. Preserve structured SDK errors privately. A timeout followed by a 404 is unresolved, not permission for a new match ID. Use SDK 0.7.2 closeCreation(originalId) through the packaged recovery example and persist confirmed closure before replacement. Do not replay create to abandon an attempt or substitute fresh launches; no infinite loading/retry loop. If a fresh agent following the published contract still lacks the method or guidance it needs, report an SDK gap, not a game-specific workaround. Distinguish that from a hosted service failure using the original error; do not infer blame from a 404 alone.
+
+## Standalone token balances (0.8.0)
+
+Read [token balances](docs/token-balances.md). Use `client.tokens.balance()` for self; use server-only `createSpawnTokenClient(...).balances(verifiedRoster)` for up to 50 active same-game members. The creator decides who receives roster results. Reuse the existing dedicated server key, or ordinary server setup for a new game. No trade, match or payment is needed just to read. Use exact base-unit strings, not Number; guests and unavailable reads are not zero. Balance visibility never grants spending approval. Never request Spawn infrastructure access or expose the server key/hidden roster balances in a browser.

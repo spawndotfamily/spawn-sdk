@@ -86,3 +86,7 @@ Publishing uploads browser assets only; it does not deploy the authoritative ser
 ## Creator server registration
 
 SDK 0.7.0 includes [self-service server setup](server-setup.md). Fresh `server:configure` credentials authorize settings for the creator's own game; the SDK generates separate private match credentials locally and registers only hashes. No Spawn VPS access is needed. Configure through the CLI, deploy the creator's own server, then verify two-member settlement before claiming completion. Setup does not authorize spending for players or grant platform administration.
+
+## Display token balances
+
+SDK 0.8.0 supports standalone self reads and creator-server roster reads of the current Listing token. The creator controls who sees other players’ balances. Read [token balances](token-balances.md); no trade or match must be created merely to read a balance.

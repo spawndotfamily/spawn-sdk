@@ -57,3 +57,7 @@ This feature requires the hosted platform trade service introduced with 0.6.0. I
 This API settles tokens only. It does not transfer ownership of objects stored in a game's independent database, and a browser-returned receipt is not proof an authoritative server should use to award items. Do not implement a token-for-item exchange by updating game items after a token transfer and calling that atomic.
 
 Current free customization needs no purchased ownership. Item-only interactions can use both in-game acceptances without a Spawn payment popup, but future earned or purchased items require a canonical ownership ledger and atomic ownership integration before trade settlement is offered. Match rewards use the separate [match-payments](match-payments.md) server API.
+
+## Balances outside a trade
+
+Use SDK 0.8.0 `client.tokens.balance()` to read self without a trade. The creator server can read verified game members with `createSpawnTokenClient(...).balances(...)` and decide who sees them. See [token balances](token-balances.md). Do not create dummy trades to obtain balances.

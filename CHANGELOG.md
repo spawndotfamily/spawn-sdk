@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.8.0
+
+### Added
+
+- Standalone `client.tokens.balance()` in isolated and multiplayer browser clients, without creating a trade or match.
+- Server-only `createSpawnTokenClient(options).balances(players)` for up to 50 verified active members of the same game. Creators decide who receives the results; browsers cannot directly read another player's balance.
+- Exact available deposited Listing-token amounts, asset identity, Listing version and snapshot time, plus structured server read errors.
+- [Balance guide](docs/token-balances.md) with creator setup, precision-safe formatting, roster verification, visibility, limits, errors and hosted verification.
+
+### Changed
+
+- Balance reads are read-only and use the Listing token. They grant no spending approval and never return legacy TEST or another token as a fallback. Local launcher reports this hosted feature unavailable.
+
+### Upgrade notes
+
+Install 0.8.0, rebuild/deploy browser and creator server. Matching hosted balance endpoints are required. Reuse existing dedicated server credentials; newly configured games use ordinary `spawn-publish server` setup. No operator/VPS action or game-specific key provisioning is needed. Preserve match journals and recovery IDs. Use server-side visibility filtering; never broadcast hidden balances then hide them in the UI. Read the balance guide before integration.
+
 ## 0.7.2 — 2026-09-17
 
 ### Added

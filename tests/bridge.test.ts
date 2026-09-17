@@ -722,3 +722,16 @@ test('token receipt chain 31337 is accepted only for a loopback platform origin'
     surface.restore();
   }
 });
+
+test('isolated game reads its own Listing token without a trade or payment request', async()=>{
+ const surface=installEmbeddedWindow();const client=sdk.createSpawnGameClient({platformOrigin:PLATFORM_ORIGIN});
+ try {
+  const pending=client.tokens.balance(), port=makePort();
+  surface.emit({source:surface.parent,origin:PLATFORM_ORIGIN,data:{type:'spawn:connected',version:1},ports:[port]});
+  const request=port.calls[0];assert.equal(request.method,'trade');assert.deepEqual(request.payload,{action:'balances'});
+  const playerId='20000000-1111-4111-8111-111111111111';
+  port.emit(responseFor(request,{projectId:'10000000-1111-4111-8111-111111111111',asset:{id:'erc20:46630:0x'+'1'.repeat(40),chainId:46630,address:'0x'+'1'.repeat(40),name:'Coin',symbol:'COIN',decimals:18,image:'',source:'spawn',enabled:true},settingsVersion:1,observedAt:1800000000000,players:[{playerId,balance:'1000000000000000001'}]}));
+  assert.equal((await pending).balance,'1000000000000000001');
+  assert.equal('balances' in client.tokens,false);
+ } finally {client.dispose();surface.restore();}
+});

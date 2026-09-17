@@ -174,3 +174,24 @@ test('match entry request expires after its bounded two-minute presentation wind
   assert.equal(p.closed,false);
  }finally{client.dispose();f.restore();}
 });
+
+test('standalone balance read uses the confirmed multiplayer port without trade creation',async()=>{
+ const f=fixture(),p=port(),client=createSpawnMultiplayerClient({platformOrigin,serverOrigin});
+ try {
+  const nonce=connect(f,p);p.emit({type:'spawn:multiplayer-confirm',version:1,nonce});await client.ready();
+  const pending=client.tokens.balance();await Promise.resolve();await Promise.resolve();
+  const request=p.sent.at(-1);assert.equal(request.type,'spawn:multiplayer-trade-request');assert.equal(request.action,'balances');assert.deepEqual(request.payload,{});
+  const playerId='20000000-1111-4111-8111-111111111111';
+  p.emit({type:'spawn:multiplayer-trade-result',version:1,nonce,requestId:request.requestId,value:{projectId:'10000000-1111-4111-8111-111111111111',asset:{id:'erc20:46630:0x'+'1'.repeat(40),chainId:46630,address:'0x'+'1'.repeat(40),name:'Coin',symbol:'COIN',decimals:18,image:'',source:'spawn',enabled:true},settingsVersion:1,observedAt:1800000000000,players:[{playerId,balance:'0'}]}});
+  assert.equal((await pending).balance,'0');assert.equal('balances' in client.tokens,false);
+ } finally {client.dispose();f.restore();}
+});
+
+test('connection loss during balance read reports unavailable without an uncertain trade',async()=>{
+ const f=fixture(),p=port(),client=createSpawnMultiplayerClient({platformOrigin,serverOrigin});
+ try {
+  const nonce=connect(f,p);p.emit({type:'spawn:multiplayer-confirm',version:1,nonce});await client.ready();
+  const pending=client.tokens.balance();await Promise.resolve();await Promise.resolve();
+  const rejected=assert.rejects(pending,/balance unavailable/i);client.dispose();await rejected;
+ } finally {client.dispose();f.restore();}
+});

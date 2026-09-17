@@ -1,3 +1,5 @@
+import { localBalanceOrigin, createTokenMethods, type SpawnTokens } from './token-balances.ts';
+export type { SpawnTokens, SpawnTokenBalance, SpawnTokenBalances, SpawnBalancePlayer } from './token-balances.ts';
 import { createTradeMethods, type SpawnTrades } from './trades.ts';
 export type { SpawnTrades, SpawnTrade, SpawnTradeCreate } from './trades.ts';
 import { leaderboardQuery, jsonSave, type LeaderboardQuery, type LeaderboardPage, type SaveIndex } from './game-data.ts';
@@ -84,6 +86,7 @@ export type SpawnTokenPaymentOptions = {
 
 export type SpawnGameClient = {
   trades: SpawnTrades;
+  tokens: SpawnTokens;
   identity(): Promise<SpawnGameIdentity>;
   getLeaderboard(query?: LeaderboardQuery): Promise<LeaderboardPage>;
   listSaves(): Promise<SaveIndex>;
@@ -473,6 +476,7 @@ export function createSpawnGameClient(options: { platformOrigin?: string } = {})
   }
 
   return {
+    tokens: createTokenMethods(payload => request('trade', { action: 'balances', ...payload }, GAME_BRIDGE_TIMEOUT_MS), localBalanceOrigin(targetOrigin)),
     trades: createTradeMethods((action, payload) => request<unknown>('trade', {action, ...payload}, action === 'accept' ? GAME_BRIDGE_PAYMENT_TIMEOUT_MS : GAME_BRIDGE_TIMEOUT_MS)),
     identity: () => request<unknown>('identity', { identityVersion: 2 }, GAME_BRIDGE_TIMEOUT_MS).then((value) => normalizeIdentity(value, targetOrigin)),
     load: <T>(keyOrRequest: string | { key: string }) => {

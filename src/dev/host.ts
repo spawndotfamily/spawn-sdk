@@ -82,6 +82,7 @@ function openGame() {
       let value: unknown;
       if (identity === 'guest' && data.method !== 'identity') throw new Error('Sign in to use scores, cloud saves or payments.');
       if (data.method === 'identity') { const {isGuest,capabilities,...legacy}=state.identity(identity); value = payload.identityVersion === 2 ? {...legacy,...(isGuest !== undefined ? {isGuest,capabilities} : {})} : legacy; status.textContent = `Connected as ${state.identity(identity).displayName}`; }
+      else if (data.method === 'trade' && payload.action === 'balances') throw new Error('Listing-token balances require a signed-in hosted Spawn preview. Local TEST balances are not Listing tokens.');
       else if (data.method === 'trade') throw new Error('Player trades require two signed-in accounts in a hosted Spawn preview; spawn-dev does not emulate settlement.');
       else if (data.method === 'load') value = state.load(identity, String(payload.key));
       else if (data.method === 'listSaves') value = state.listSaves(identity);

@@ -88,3 +88,7 @@ Publishing uploads browser assets only; it does not deploy the authoritative ser
 ## Creator server registration
 
 SDK 0.7.0 includes [self-service server setup](server-setup.md). Fresh `server:configure` credentials authorize settings for the creator's own game; the SDK generates separate private match credentials locally and registers only hashes. No Spawn VPS access is needed. Configure through the CLI, deploy the creator's own server, then verify two-member settlement before claiming completion. Setup does not authorize spending for players or grant platform administration.
+
+## Token balance displays
+
+Read [token balances](token-balances.md). Browser reads are self-only; the creator server reads verified active game members and applies visibility before sending. Verify exact units, no fake-zero fallback, expired/guest/cross-game rejection, and no new money operation from a read. Install/deploy browser and server changes separately.

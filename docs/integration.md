@@ -106,3 +106,7 @@ See [player data and leaderboards](game-data.md) for nested JSON, listSaves/remo
 The public npm package is `@spawndotfamily/sdk`. For existing integrations that used `@spawn/sdk`, update imports, including subpaths, to the public name. Alternatively, install an npm alias with `npm install --save-exact --ignore-scripts @spawn/sdk@npm:@spawndotfamily/sdk` to preserve existing imports. Choose one approach, review the release notes, and ask before upgrading an existing integration. Keep the lockfile.
 
 This package-name change does not make `createSpawnClient('rob-the-rich')` a public creator API. That deprecated first-party compatibility client keeps its original same-origin cookie restrictions; creator games use `createSpawnGameClient` and the documented startup flow.
+
+## Standalone Listing-token balances
+
+Both browser clients expose `client.tokens.balance()` for the signed-in player. Use `createSpawnTokenClient` from `/server` for verified game-roster balances and creator-controlled visibility. See [the complete contract](token-balances.md). No payment/trade creation is required; reads do not grant spending authority.

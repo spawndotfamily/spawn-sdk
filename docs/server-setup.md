@@ -53,3 +53,7 @@ Use the actual current version. Disable revokes match authority immediately, whi
 Report setup status, browser publication, actual running server revision and two-member settlement verification separately. Test a complete consent → reservation → capture → payout and cancellation/refund flow with two consenting signed-in members before claiming end-to-end completion. Local fixture tests and a successful enable response do not prove a game server is deployed or its payouts work.
 
 A 401/403 means missing/expired/revoked credentials, missing setup scope or wrong owner. Download a fresh credential when needed. A 409 means stale settings, unavailable game, active matches or missing Listing readiness; inspect the message and current status. A 503 means platform signing/custody/service readiness is unavailable. Report that platform failure; never request private VPS access or substitute fake currency.
+
+## Roster balances
+
+SDK 0.8.0’s server-only `createSpawnTokenClient` reuses this game’s dedicated `match.key` for read-only Listing-token roster snapshots. Existing games need no key rotation. This credential can read active same-game balances as well as its documented match authority; protect it accordingly. Publishing/storage keys cannot read the roster. Read [token balances](token-balances.md) for visibility and verified admission.

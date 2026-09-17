@@ -141,3 +141,7 @@ export { createSpawnMatchClient, SpawnMatchRequestError } from './match-server.t
 export type { SpawnMatchClient, SpawnMatchClientOptions, SpawnMatchDefinition, SpawnMatchPlayer, SpawnMatchSettlement, SpawnMatchStatus, SpawnMatchAsset, SpawnMatchCancelResult, SpawnMatchClosureResult, SpawnMatchSettlementResult } from './match-server.ts';
 
 export type { SpawnMatchErrorCode, SpawnMatchErrorDetails } from "./match-errors.ts";
+
+export { createSpawnTokenClient, SpawnTokenBalanceError } from './token-server.ts';
+export type { SpawnTokenClient, SpawnTokenClientOptions } from './token-server.ts';
+export type { SpawnBalancePlayer, SpawnTokenBalance, SpawnTokenBalances } from './token-balances.ts';
