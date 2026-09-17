@@ -317,7 +317,7 @@ export async function runServerCommand(
       matchesEnabled: true,
       privateDirectory: dir,
       verificationFile: join(dir, 'verification.json'),
-      next: 'Install match.key and verification.json privately on your own server. Keep storage.key only if using Spawn game storage. Configure a durable match journal, restart your server, then test with two consenting signed-in players. No player tokens were moved by setup.',
+      next: 'Install match.key and verification.json privately on your own server. The existing match.key covers game-scoped tables as well as matches. Keep storage.key only if using Spawn game storage. Configure a durable match/table journal, restart your server, then test with two consenting signed-in players. No player tokens were moved by setup.',
     };
   }
 }

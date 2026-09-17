@@ -2,6 +2,32 @@ import { localBalanceOrigin, createTokenMethods, type SpawnTokens } from './toke
 export type { SpawnTokens, SpawnTokenBalance, SpawnTokenBalances, SpawnBalancePlayer } from './token-balances.ts';
 import { createTradeMethods, type SpawnTrades, type SpawnTradeAction } from './trades.ts';
 export type { SpawnTrade, SpawnTrades } from './trades.ts';
+import {
+    validateSpawnTableBuyInResult,
+    validateSpawnTablePlayerStatus,
+} from './table-validation.ts';
+export type {
+    SpawnTableAsset,
+    SpawnTableStatusName,
+    SpawnTableSeat,
+    SpawnTableHandPlayer,
+    SpawnTablePot,
+    SpawnTableHand,
+    SpawnTableTotals,
+    SpawnTableStatus,
+    SpawnTableBuyInStatus,
+    SpawnTableBuyInQuote,
+    SpawnTableBuyInResult,
+    SpawnTablePlayerBuyInQuote,
+    SpawnTablePlayerStatus,
+} from './table-types.ts';
+export type SpawnMultiplayerTables = {
+    buyIn(input: { tableId: string; buyInId: string }): Promise<import('./table-types.ts').SpawnTableBuyInResult>;
+    status(tableId: string): Promise<import('./table-types.ts').SpawnTablePlayerStatus>;
+    heartbeat(tableId: string): Promise<import('./table-types.ts').SpawnTablePlayerStatus>;
+    leave(input: { tableId: string; operationId: string; seatId: string }): Promise<import('./table-types.ts').SpawnTablePlayerStatus>;
+    watch(tableId: string): () => void;
+};
 /** Browser-only admission transport. Account proof is verified on the creator's server. */
 export type SpawnMultiplayerOptions = {
     platformOrigin: string;
@@ -12,6 +38,7 @@ export type SpawnMultiplayerOptions = {
 export type SpawnMultiplayerClient = {
     trades: SpawnTrades;
     tokens: SpawnTokens;
+    tables: SpawnMultiplayerTables;
     ready(): Promise<void>;
     requestGrant(): Promise<{
         ticket: string;
@@ -31,10 +58,11 @@ type ActiveClient = {
     client: SpawnMultiplayerClient;
 };
 const clients = new WeakMap<Window, ActiveClient>(), closedDocuments = new WeakSet<Window>();
-const DURATION = 8000, LOAD_DURATION = 45000, MATCH_ENTRY_DURATION = 120000, PREFIX = 'spawn:multiplayer-';
+const DURATION = 8000, LOAD_DURATION = 45000, MATCH_ENTRY_DURATION = 120000, TABLE_HEARTBEAT_INTERVAL = 20000, TABLE_TIMEOUT = 15000, TABLE_BUYIN_TIMEOUT = 300000, PREFIX = 'spawn:multiplayer-';
 const object = (value: unknown): value is Record<string, unknown> => value !== null && typeof value === 'object' && !Array.isArray(value);
 const exact = (value: Record<string, unknown>, keys: string[]) => Object.keys(value).length === keys.length && keys.every(key => Object.hasOwn(value, key));
 const uuid = (value: unknown): value is string => typeof value === 'string' && /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(value);
+const tableUuid = (value: unknown): value is string => typeof value === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
 function trustedOrigin(value: string) {
     let url: URL;
     try {
@@ -92,6 +120,13 @@ export function createSpawnMultiplayerClient(options: SpawnMultiplayerOptions): 
         timer?: ReturnType<typeof setTimeout>;
     } | null = null;
     const tradeRequests=new Map<string,{action:SpawnTradeAction;resolve:(value:unknown)=>void;reject:(error:Error)=>void;timer:ReturnType<typeof setTimeout>}>();
+    const tableRequests = new Map<string, {
+        method: 'tables.buyIn' | 'tables.status' | 'tables.heartbeat' | 'tables.leave';
+        resolve: (value: unknown) => void;
+        reject: (error: Error) => void;
+        timer: ReturnType<typeof setTimeout>;
+    }>();
+    const tableWatches = new Map<string, { timer: ReturnType<typeof setInterval>; inFlight: boolean }>();
     async function sendTrade(action:SpawnTradeAction,payload:Record<string,unknown>):Promise<unknown>{
         await readyPromise;
         if(closed||!confirmed)throw new Error('The Spawn launch is closed.');
@@ -103,12 +138,71 @@ export function createSpawnMultiplayerClient(options: SpawnMultiplayerOptions): 
             post({type:PREFIX+'trade-request',requestId:id,action,payload});
         });
     }
+    async function sendTable(method: 'tables.buyIn' | 'tables.status' | 'tables.heartbeat' | 'tables.leave', payload: Record<string, unknown>): Promise<unknown> {
+        await readyPromise;
+        if (closed || !confirmed) throw new Error('The Spawn launch is closed.');
+        if (tableRequests.size >= 5) throw new Error('Too many pending table requests.');
+        return new Promise((resolve, reject) => {
+            const id = crypto.randomUUID();
+            const timer = setTimeout(() => {
+                tableRequests.delete(id);
+                reject(new Error(method === 'tables.buyIn'
+                    ? 'Spawn did not respond; table buy-in outcome is unknown.'
+                    : 'Spawn did not respond; table status is unavailable.'));
+            }, method === 'tables.buyIn' ? TABLE_BUYIN_TIMEOUT : TABLE_TIMEOUT);
+            tableRequests.set(id, { method, resolve, reject, timer });
+            post({ type: PREFIX + 'table-request', requestId: id, method, payload });
+        });
+    }
+    function normalizeTableId(value: unknown): string {
+        if (!tableUuid(value)) throw new Error('tableId must be a UUID.');
+        return value.toLowerCase();
+    }
+    function normalizeOperationId(value: unknown): string {
+        if (!tableUuid(value)) throw new Error('operationId must be a UUID.');
+        return value.toLowerCase();
+    }
+    function normalizeSeatId(value: unknown): string {
+        if (!tableUuid(value)) throw new Error('seatId must be a UUID.');
+        return value.toLowerCase();
+    }
+    function stopTableWatch(tableId: string): void {
+        const watch = tableWatches.get(tableId);
+        if (!watch) return;
+        clearInterval(watch.timer);
+        tableWatches.delete(tableId);
+    }
+    function startTableWatch(tableId: string): () => void {
+        stopTableWatch(tableId);
+        const watch = { timer: undefined as unknown as ReturnType<typeof setInterval>, inFlight: false };
+        const tick = () => {
+            if (closed || watch.inFlight || tableWatches.get(tableId) !== watch) return;
+            watch.inFlight = true;
+            sendTable('tables.heartbeat', { tableId })
+                .then((value) => validateSpawnTablePlayerStatus(value, tableId, platformOrigin))
+                .catch(() => { if (tableWatches.get(tableId) === watch) stopTableWatch(tableId); })
+                .finally(() => { watch.inFlight = false; });
+        };
+        watch.timer = setInterval(tick, TABLE_HEARTBEAT_INTERVAL);
+        tableWatches.set(tableId, watch);
+        tick();
+        return () => stopTableWatch(tableId);
+    }
     function dispose() {
         if (closed)
             return;
         closed = true;
         for(const t of tradeRequests.values()){clearTimeout(t.timer);t.reject(new Error(t.action === 'balances' ? 'Token balance unavailable. Reopen the game and retry this read.' : 'The launch closed. Trade outcome is unknown; query its status.'));}
         tradeRequests.clear();
+        for (const watch of tableWatches.values()) clearInterval(watch.timer);
+        tableWatches.clear();
+        for (const request of tableRequests.values()) {
+            clearTimeout(request.timer);
+            request.reject(new Error(request.method === 'tables.buyIn'
+                ? 'The Spawn launch closed; table buy-in outcome is unknown.'
+                : 'The Spawn launch closed; table status is unavailable.'));
+        }
+        tableRequests.clear();
         clearInterval(readyTimer);
         clearTimeout(handshakeTimer);
         w.removeEventListener('message', offer);
@@ -159,6 +253,18 @@ export function createSpawnMultiplayerClient(options: SpawnMultiplayerOptions): 
             if(!result&&!error)return;
             const t=tradeRequests.get(value.requestId)!;tradeRequests.delete(value.requestId);clearTimeout(t.timer);
             if(result)t.resolve(value.value);else t.reject(new Error('Trade request failed. Query its status before retrying.'));
+            return;
+        }
+        if (typeof value.requestId === 'string' && tableRequests.has(value.requestId)) {
+            const result = value.type === PREFIX + 'table-result' && exact(value, ['type', 'version', 'nonce', 'requestId', 'value']);
+            const error = value.type === PREFIX + 'table-error' && exact(value, ['type', 'version', 'nonce', 'requestId', 'message']);
+            if (!result && !error) return;
+            if (error && (typeof value.message !== 'string' || value.message.length > 160)) return;
+            const request = tableRequests.get(value.requestId)!;
+            tableRequests.delete(value.requestId);
+            clearTimeout(request.timer);
+            if (result) request.resolve(value.value);
+            else request.reject(new Error('Spawn could not complete this table request. Reconcile its server status.'));
             return;
         }
         if (pendingMatchEntry && value.requestId === pendingMatchEntry.id && value.matchId === pendingMatchEntry.matchId) {
@@ -281,7 +387,56 @@ export function createSpawnMultiplayerClient(options: SpawnMultiplayerOptions): 
         post({ type: PREFIX + 'connection-state', state });
         return !closed;
     }
-    const client = { tokens: createTokenMethods(payload => sendTrade('balances', payload), localBalanceOrigin(platformOrigin)), trades: createTradeMethods(sendTrade), ready: () => readyPromise, requestGrant, requestMatchEntry, reportConnection, dispose };
+    const tables: SpawnMultiplayerTables = {
+        buyIn(input) {
+            if (!object(input) || !exact(input, ['tableId', 'buyInId']))
+                return Promise.reject(new Error('A table ID and buy-in ID are required.'));
+            let tableId: string, buyInId: string;
+            try {
+                tableId = normalizeTableId(input.tableId);
+                buyInId = normalizeTableId(input.buyInId);
+            } catch (error) {
+                return Promise.reject(error instanceof Error ? error : new Error('Invalid table buy-in request.'));
+            }
+            return sendTable('tables.buyIn', { tableId, buyInId })
+                .then(value => {
+                    const result = validateSpawnTableBuyInResult(value, tableId, buyInId);
+                    return result;
+                });
+        },
+        status(tableId) {
+            let id: string;
+            try { id = normalizeTableId(tableId); }
+            catch (error) { return Promise.reject(error instanceof Error ? error : new Error('Invalid table ID.')); }
+            return sendTable('tables.status', { tableId: id })
+                .then(value => validateSpawnTablePlayerStatus(value, id, platformOrigin));
+        },
+        heartbeat(tableId) {
+            let id: string;
+            try { id = normalizeTableId(tableId); }
+            catch (error) { return Promise.reject(error instanceof Error ? error : new Error('Invalid table ID.')); }
+            return sendTable('tables.heartbeat', { tableId: id })
+                .then(value => validateSpawnTablePlayerStatus(value, id, platformOrigin));
+        },
+        leave(input) {
+            if (!object(input) || !exact(input, ['tableId', 'operationId', 'seatId']))
+                return Promise.reject(new Error('A table ID, operation ID and seat ID are required.'));
+            let tableId: string, operationId: string, seatId: string;
+            try {
+                tableId = normalizeTableId(input.tableId);
+                operationId = normalizeOperationId(input.operationId);
+                seatId = normalizeSeatId(input.seatId);
+            } catch (error) {
+                return Promise.reject(error instanceof Error ? error : new Error('Invalid table leave request.'));
+            }
+            return sendTable('tables.leave', { tableId, operationId, seatId })
+                .then(value => validateSpawnTablePlayerStatus(value, tableId, platformOrigin));
+        },
+        watch(tableId) {
+            return startTableWatch(normalizeTableId(tableId));
+        },
+    };
+    const client = { tables, tokens: createTokenMethods(payload => sendTrade('balances', payload), localBalanceOrigin(platformOrigin)), trades: createTradeMethods(sendTrade), ready: () => readyPromise, requestGrant, requestMatchEntry, reportConnection, dispose };
     clients.set(w, { platformOrigin, serverOrigin, client });
     w.addEventListener('message', offer);
     w.addEventListener('pagehide', dispose, { once: true });

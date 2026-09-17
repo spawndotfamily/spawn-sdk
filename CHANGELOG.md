@@ -1,5 +1,29 @@
 # Changelog
 
+## 0.9.0
+
+### Added
+
+- Server-only `createSpawnTableClient` for durable 2–6 player Listing-token tables: create, status, operation recovery, buy-in quotes, hand start/commit/settle, disconnect, cash-out, heartbeat and permanent close.
+- Public table types and strict UUID, uint256 BASE UNIT, asset, seat-generation, conservation and tombstone validation. Structured `SpawnTableRequestError` diagnostics distinguish known rejections from unknown mutation outcomes.
+- `client.tables` on isolated and multiplayer browser clients. Spawn-owned buy-in approval returns only the confirmed/cancelled quote status; status, heartbeat, leave and a bounded 20-second watch lifecycle are available without game-side approval authority.
+- [Persistent table bankroll guide](docs/table-bankroll.md) and a runnable durable-journal/recovery example at `examples/table-bankroll.mjs`.
+
+### Changed
+
+- Public table seats now include immutable UUID `seatId` generations and `pendingCashOut`; hand rosters use `{ playerId, seatId }`, and cash-out/disconnect/leave requests include the seat generation. `expectedRevision` for hand mutations is the hand revision.
+- Table status accepts a null asset only for the absent closed tombstone (`settingsVersion: 0`, `maxSeats: 0`, `leaseExpiresAt: null`); funded closed tables retain their original asset snapshot. Player status includes `seatId`, `seatStatus`, `stack`, `pendingCashOut` and the public table state.
+- The existing dedicated `match.key` and `matchesEnabled` server setup metadata cover game-scoped tables as well as matches. No separate `tablesEnabled` setting or VPS activation is introduced.
+- Removed stale integration guidance claiming that creator self-service registration is unavailable; setup and table security guidance now agree.
+- All server table amounts use canonical unsigned integer BASE UNIT strings. Mutations never retry automatically; reconcile the same table and operation IDs after a timeout, 408, 5xx or transport failure.
+
+### Upgrade notes
+
+- Pin `0.9.0`, rebuild both browser and authoritative server bundles, and read [table bankroll](docs/table-bankroll.md). Deploy the matching Spawn 0.9 table service; installing the SDK alone cannot add platform routes or persistence.
+- Reuse the existing dedicated `match.key` from ordinary `spawn-publish server enable`; do not put it in browser code. Existing setup output may continue to report `matchesEnabled`, which covers tables.
+- Persist each exact mutation intent before its network call with crash-safe atomic writes or a SQLite transaction. On restart, query the same operation/table IDs, preserve unresolved records after a 404, and never resend with fresh IDs. Restore unfinished hands from the server hand revision and contribution snapshot without inventing a winner.
+- Tables use admitted Listing testnet assets on chain `46630`; `31337` is loopback-only. This release does not enable mainnet or redeemable-money settlement. Test confirmed buy-ins, side-pot conservation, reconnect/disconnect and offline cash-out recovery with two consenting signed-in members before claiming hosted completion.
+
 ## 0.8.0
 
 ### Added

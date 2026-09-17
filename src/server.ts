@@ -144,4 +144,34 @@ export type { SpawnMatchErrorCode, SpawnMatchErrorDetails } from "./match-errors
 
 export { createSpawnTokenClient, SpawnTokenBalanceError } from './token-server.ts';
 export type { SpawnTokenClient, SpawnTokenClientOptions } from './token-server.ts';
+
+export { createSpawnTableClient, SpawnTableRequestError } from './table-server.ts';
+export type {
+    SpawnTableClient,
+    SpawnTableClientOptions,
+    SpawnTableAsset,
+    SpawnTableStatus,
+    SpawnTableStatusName,
+    SpawnTableSeat,
+    SpawnTableHand,
+    SpawnTableHandPlayer,
+    SpawnTablePot,
+    SpawnTableTotals,
+    SpawnTableBuyInStatus,
+    SpawnTableBuyInQuote,
+    SpawnTableBuyInResult,
+    SpawnTablePlayerBuyInQuote,
+    SpawnTablePlayerStatus,
+    SpawnTableCreateInput,
+    SpawnTableBuyInInput,
+    SpawnTableStartHandInput,
+    SpawnTableCommitHandInput,
+    SpawnTableSettleHandInput,
+    SpawnTableCashOutInput,
+    SpawnTableDisconnectInput,
+    SpawnTableOperation,
+    SpawnTableOperationExpectation,
+    SpawnTableOperationResult,
+    SpawnTableErrorDetails,
+} from './table-server.ts';
 export type { SpawnBalancePlayer, SpawnTokenBalance, SpawnTokenBalances } from './token-balances.ts';

@@ -16,6 +16,7 @@ One prompt can prepare, test and upload a **private preview**. After the automat
 | Listing and images | Name, description, supported details and image edits for this game | Use scoped CLI listing/image commands and expectedVersion. No ownership, approval, platform-fee or other-project pricing changes. |
 | Local testing | Fake players, balances, pool controls and fixed TEST receipts | Use spawn-dev on the finished folder; it does not simulate Listing-configured token purchases. Keep test accounts out of shipped game code. |
 | Multiplayer | Registered integration with a creator-operated server | Read multiplayer/startup documentation. Use the self-service server setup CLI; server authority and settlement are separate from a browser handshake. |
+| Persistent tables | Durable 2–6 player Listing-token tables through the creator-operated server | Use SDK 0.9.0 `createSpawnTableClient` and `client.tables` with the existing dedicated `match.key`. Read [table bankroll](table-bankroll.md) for BASE UNIT amounts, Spawn-owned approval, seat generations and recovery. |
 | Friends and chat | Platform UI | No game SDK access to private chat, friends administration or moderation. |
 | Testnet wallets | Spawn manages supported testnet deposits and withdrawals | Game payments use deposited platform balances. No game-side custody keys or on-chain transfer API. Mainnet is not supported. |
 
@@ -86,6 +87,8 @@ Publishing uploads browser assets only; it does not deploy the authoritative ser
 ## Creator server registration
 
 SDK 0.7.0 includes [self-service server setup](server-setup.md). Fresh `server:configure` credentials authorize settings for the creator's own game; the SDK generates separate private match credentials locally and registers only hashes. No Spawn VPS access is needed. Configure through the CLI, deploy the creator's own server, then verify two-member settlement before claiming completion. Setup does not authorize spending for players or grant platform administration.
+
+The same dedicated `match.key` covers game-scoped tables. Table persistence and the matching Spawn 0.9 service are separate deployment concerns; publishing the browser build does not deploy them. Keep exact table mutation intents in a durable journal and reconcile the same operation and table IDs after an uncertain response.
 
 ## Display token balances
 

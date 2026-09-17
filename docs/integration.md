@@ -14,7 +14,7 @@ The deprecated, reviewed first-party compatibility client sends requests to `/ap
 
 Keep a game’s rendering, input, rules, assets and networking in focused modules. Store secrets only on a trusted server. Multiplayer authority, payouts and anti-cheat must not rely on browser claims. You may run your own game server and database; this prototype does not provision them.
 
-Uploaded previews use an isolated origin and the sandbox bridge described below. Creator server provisioning, self-service multiplayer registration and reward APIs are not implemented. The separate multiplayer SDK modules require platform enablement and a creator-operated server; see [multiplayer.md](multiplayer.md). Do not remove the game allowlist or change the save transport to forward session cookies to another origin as a workaround.
+Uploaded previews use an isolated origin and the sandbox bridge described below. Creators deploy their own authoritative servers and register them through [self-service server setup](server-setup.md). The documented match and table APIs use a separate game-scoped server credential; they do not expose a general browser payout API. See [multiplayer.md](multiplayer.md). Do not remove the game allowlist or change the save transport to forward session cookies to another origin as a workaround.
 
 See [security guidance](security.md) for the selected database-only hosting boundary, manual single-player review, storage quotas and why client-side encryption cannot protect a privileged API key.
 
@@ -41,6 +41,10 @@ The source candidate includes local listing/image commands, available in Spawn�
 ## Multiplayer match entry
 
 The separate registered multiplayer flow uses `requestMatchEntry({ matchId })` to open a Spawn-owned TEST reservation overlay. See [match-entry presentation](match-payments.md) for its nonce-bound transport, one-request bound and presentation-only result. This method does not change the isolated-preview listing entry contract.
+
+## Persistent tables
+
+SDK 0.9.0 supports persistent 2–6 player Listing-token tables through the creator's authoritative server. Keep the existing dedicated `match.key` on that server and use `createSpawnTableClient` from the server entry point; browser code uses `client.tables.buyIn`, `status`, `heartbeat`, `leave` and `watch`. Spawn's host owns buy-in approval and returns only a server-confirmed status. Amounts sent through server table APIs are canonical unsigned BASE UNIT strings, and the matching Spawn 0.9 table service is required. Read [the table bankroll contract](table-bankroll.md) for durable journaling, seat generations, hand revisions and recovery.
 
 ## Configured token entry
 

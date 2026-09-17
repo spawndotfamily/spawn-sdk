@@ -5,6 +5,8 @@ import * as sdk from '../src/index.ts';
 const PLATFORM_ORIGIN = 'https://spawn.example.test';
 const DOCUMENT_TOKEN = 'a'.repeat(43);
 const TOKEN_REQUEST_ID = '123e4567-e89b-42d3-a456-426614174000';
+const TABLE_ID = '123e4567-e89b-42d3-a456-426614174000';
+const BUY_IN_ID = '223e4567-e89b-42d3-a456-426614174000';
 
 type MessageEventLike = {
   source: unknown;
@@ -107,6 +109,31 @@ function responseFor(request: Record<string, unknown>, value: unknown) {
     value,
   };
 }
+
+test('game table buy-in does not start a heartbeat until watch is explicit', async () => {
+  const surface = installEmbeddedWindow();
+  let client: sdk.SpawnGameClient | undefined;
+  try {
+    client = sdk.createSpawnGameClient({ platformOrigin: PLATFORM_ORIGIN });
+    const pending = client.tables.buyIn({ tableId: TABLE_ID, buyInId: BUY_IN_ID });
+    const port = makePort();
+    surface.emit({ source: surface.parent, origin: PLATFORM_ORIGIN, data: { type: 'spawn:connected', version: 1 }, ports: [port] });
+    const request = port.calls[0]!;
+    assert.equal(request.method, 'tables.buyIn');
+    port.emit(responseFor(request, { tableId: TABLE_ID, buyInId: BUY_IN_ID, status: 'confirmed' }));
+    assert.deepEqual(await pending, { tableId: TABLE_ID, buyInId: BUY_IN_ID, status: 'confirmed' });
+    assert.equal(port.calls.filter((entry) => entry.method === 'tables.heartbeat').length, 0);
+    const stop = client.tables.watch(TABLE_ID);
+    await Promise.resolve();
+    const heartbeat = port.calls.find((entry) => entry.method === 'tables.heartbeat');
+    assert.ok(heartbeat, 'an explicit watch starts the player heartbeat');
+    assert.deepEqual(heartbeat.payload, { tableId: TABLE_ID });
+    stop();
+  } finally {
+    client?.dispose();
+    surface.restore();
+  }
+});
 
 test('requires an embedded window and never falls back to a fake standalone client', () => {
   const oldWindow = Object.getOwnPropertyDescriptor(globalThis, 'window');

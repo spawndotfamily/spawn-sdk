@@ -58,7 +58,7 @@ This requires the matching hosted `POST /api/v1/registered-games/:projectId/matc
 ## SDK issue, platform issue, or game integration issue?
 
 - **SDK gap:** a fresh agent following the packaged guides lacks a method, loses essential error information, or cannot determine the safe next step. Fix the SDK, tests, examples and release notes for all creators.
-- **Platform issue:** the documented request is correctly sent but the hosted service rejects it incorrectly, lacks a required endpoint, or cannot reconcile its durable state. Report the exact scope, time, SDK version and safe diagnostics; changing Hotel code cannot repair that service.
+- **Platform issue:** the documented request is correctly sent but the hosted service rejects it incorrectly, lacks a required endpoint, or cannot reconcile its durable state. Report the exact scope, time, SDK version and safe diagnostics; changing game code cannot repair that service.
 - **Game integration issue:** the game departs from the documented contract—for example, uses an unverified launch ID, changes the definition under an existing ID, opens approval before create succeeds, clears uncertain records, or displays an endless spinner. The game's agent fixes this in its own project.
 
 A401,409 or404 by itself does not establish blame. First retain the original failure, inspect its stage and public reason, and compare the request with the installed contract. Test fresh-agent instructions as part of the SDK fix rather than relying on unpublished operator knowledge.

@@ -87,7 +87,9 @@ Spawn handles connection notices, transaction history, and payment confirmation 
 
 For configured token entries, the Listing's `entryAmount` is the permanent game-access purchase price. Do not request that default entry payment again after access is granted. A separate optional custom payment may provide only an amount and item; Spawn still selects the Listing asset. The SDK does not accept a token address from browser code; see [entry payment integration](docs/integration.md#configured-token-entry).
 
-Multiplayer requires your own authoritative game server and an enabled Spawn integration. Server registration is not self-service, and the SDK does not provide server hosting. See the [multiplayer guide](docs/multiplayer.md).
+Multiplayer requires your own authoritative game server and an enabled Spawn integration. Server registration is self-service, and the SDK does not provide server hosting. See the [multiplayer guide](docs/multiplayer.md).
+
+SDK 0.9.0 adds persistent 2–6 player Listing-token tables through the same creator-operated server and dedicated `match.key`. Use the server-only `createSpawnTableClient` and the browser `client.tables` APIs; Spawn owns player buy-in approval, while the creator server owns game outcomes. Every table amount is a canonical BASE UNIT string, and every mutation needs a durable journal entry for recovery. Read the [table bankroll guide](docs/table-bankroll.md) before integrating.
 
 ## Guides and help
 
@@ -108,8 +110,10 @@ Player-to-player token gifts and atomic two-way trades are available through `cl
 
 ## Creator server registration
 
-SDK 0.7.0 includes [self-service server setup](docs/server-setup.md). Fresh `server:configure` credentials authorize settings for the creator's own game; the SDK generates separate private match credentials locally and registers only hashes. No Spawn VPS access is needed. Configure through the CLI, deploy the creator's own server, then verify two-member settlement before claiming completion. Setup does not authorize spending for players or grant platform administration.
+SDK 0.7.0 includes [self-service server setup](docs/server-setup.md). Fresh `server:configure` credentials authorize settings for the creator's own game; the SDK generates separate private match credentials locally and registers only hashes. The existing dedicated `match.key` covers matches and game-scoped tables; no separate table activation or Spawn VPS access is needed. Configure through the CLI, deploy the creator's own server, then verify the relevant settlement flow before claiming completion. Setup does not authorize spending for players or grant platform administration.
 
 Match recovery: server SDK 0.7.2 adds `closeCreation(matchId)` for uncertain attempts with expired launches. Read [the recovery contract](docs/match-recovery.md); persist confirmed closure before replacement.
 
 Standalone Listing-token balances are available through `client.tokens.balance()`. Creator servers can read their verified game roster and decide who sees balances. See the [balance guide](docs/token-balances.md).
+
+Persistent table operations and recovery are documented in the [table bankroll guide](docs/table-bankroll.md), including seat generations, side pots, reconnects and offline cash-out recovery.

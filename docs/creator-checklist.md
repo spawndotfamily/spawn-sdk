@@ -92,3 +92,7 @@ SDK 0.7.0 includes [self-service server setup](server-setup.md). Fresh `server:c
 ## Token balance displays
 
 Read [token balances](token-balances.md). Browser reads are self-only; the creator server reads verified active game members and applies visibility before sending. Verify exact units, no fake-zero fallback, expired/guest/cross-game rejection, and no new money operation from a read. Install/deploy browser and server changes separately.
+
+## Persistent tables
+
+For SDK 0.9.0 tables, read [table bankroll](table-bankroll.md) before implementation. Use the existing dedicated `match.key` on the creator's authoritative server and `client.tables` in the browser. Persist every exact table mutation intent before its network call, preserve unresolved records after timeouts or 404s, and reconcile the original IDs before any permitted same-ID replay. Test confirmed buy-in approval, side-pot conservation, seat-generation fencing, hand recovery, reconnect and cash-out recovery with two signed-in members. The matching Spawn 0.9 table service must be deployed separately; a browser upload does not provide persistence or authority.

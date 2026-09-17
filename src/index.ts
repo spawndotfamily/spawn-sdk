@@ -2,6 +2,26 @@ import { localBalanceOrigin, createTokenMethods, type SpawnTokens } from './toke
 export type { SpawnTokens, SpawnTokenBalance, SpawnTokenBalances, SpawnBalancePlayer } from './token-balances.ts';
 import { createTradeMethods, type SpawnTrades } from './trades.ts';
 export type { SpawnTrades, SpawnTrade, SpawnTradeCreate } from './trades.ts';
+import {
+  validateSpawnTableBuyInResult,
+  validateSpawnTablePlayerStatus,
+  validateSpawnTableStatus,
+} from './table-validation.ts';
+export type {
+  SpawnTableAsset,
+  SpawnTableStatusName,
+  SpawnTableSeat,
+  SpawnTableHandPlayer,
+  SpawnTablePot,
+  SpawnTableHand,
+  SpawnTableTotals,
+  SpawnTableStatus,
+  SpawnTableBuyInStatus,
+  SpawnTableBuyInQuote,
+  SpawnTableBuyInResult,
+  SpawnTablePlayerBuyInQuote,
+  SpawnTablePlayerStatus,
+} from './table-types.ts';
 import { leaderboardQuery, jsonSave, type LeaderboardQuery, type LeaderboardPage, type SaveIndex } from './game-data.ts';
 export type { LeaderboardQuery, LeaderboardPage, LeaderboardEntry, LeaderboardPolicy, SaveIndex } from './game-data.ts';
 export type Save<T> = { value: T; version: number; updatedAt: string };
@@ -84,9 +104,22 @@ export type SpawnTokenPaymentOptions = {
   requestId?: string;
 };
 
+export type SpawnTableBrowserBuyInInput = { tableId: string; buyInId: string };
+export type SpawnTableBrowserLeaveInput = { tableId: string; operationId: string; seatId: string };
+export type SpawnTableBrowser = {
+  /** Opens Spawn's shared confirmation UI; the result is only a server-confirmed quote status. */
+  buyIn(input: SpawnTableBrowserBuyInInput): Promise<import('./table-types.ts').SpawnTableBuyInResult>;
+  status(tableId: string): Promise<import('./table-types.ts').SpawnTablePlayerStatus>;
+  heartbeat(tableId: string): Promise<import('./table-types.ts').SpawnTablePlayerStatus>;
+  leave(input: SpawnTableBrowserLeaveInput): Promise<import('./table-types.ts').SpawnTablePlayerStatus>;
+  /** Start a 20-second player heartbeat loop. Call the returned stop function on disconnect. */
+  watch(tableId: string): () => void;
+};
+
 export type SpawnGameClient = {
   trades: SpawnTrades;
   tokens: SpawnTokens;
+  tables: SpawnTableBrowser;
   identity(): Promise<SpawnGameIdentity>;
   getLeaderboard(query?: LeaderboardQuery): Promise<LeaderboardPage>;
   listSaves(): Promise<SaveIndex>;
@@ -103,6 +136,7 @@ export const MAX_GAME_BRIDGE_OUTSTANDING = 20;
 const GAME_BRIDGE_VERSION = 1;
 const GAME_BRIDGE_TIMEOUT_MS = 15_000;
 const GAME_BRIDGE_PAYMENT_TIMEOUT_MS = 300_000;
+const TABLE_HEARTBEAT_INTERVAL_MS = 20_000;
 const TOKEN_PAYMENT_AMOUNT_PATTERN = /^(?:0|[1-9][0-9]*)(?:\.[0-9]+)?$/;
 const TOKEN_PAYMENT_ITEM_MAX_LENGTH = 80;
 const TOKEN_RECEIPT_VERSION = 1;
@@ -323,6 +357,7 @@ export function createSpawnGameClient(options: { platformOrigin?: string } = {})
   let handshakeAccepted = false;
   let connectedPort: MessagePortLike | undefined;
   const pending = new Map<string, PendingBridgeRequest>();
+  const tableWatches = new Map<string, { timer: ReturnType<typeof setInterval>; inFlight: boolean }>();
 
   const removePending = (id: string): PendingBridgeRequest | undefined => {
     const request = pending.get(id);
@@ -459,9 +494,56 @@ export function createSpawnGameClient(options: { platformOrigin?: string } = {})
     return promise;
   }
 
+  function normalizeTableId(value: unknown): string {
+    if (typeof value !== 'string' || !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)) {
+      throw new Error('tableId must be a UUID.');
+    }
+    return value.toLowerCase();
+  }
+
+  function normalizeOperationId(value: unknown): string {
+    if (typeof value !== 'string' || !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)) {
+      throw new Error('operationId must be a UUID.');
+    }
+    return value.toLowerCase();
+  }
+
+  function normalizeSeatId(value: unknown): string {
+    if (typeof value !== 'string' || !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)) {
+      throw new Error('seatId must be a UUID.');
+    }
+    return value.toLowerCase();
+  }
+
+  function stopTableWatch(tableId: string): void {
+    const watch = tableWatches.get(tableId);
+    if (!watch) return;
+    clearInterval(watch.timer);
+    tableWatches.delete(tableId);
+  }
+
+  function startTableWatch(tableId: string): () => void {
+    stopTableWatch(tableId);
+    const watch = { timer: undefined as unknown as ReturnType<typeof setInterval>, inFlight: false };
+    const tick = () => {
+      if (disposed || watch.inFlight || tableWatches.get(tableId) !== watch) return;
+      watch.inFlight = true;
+      request<unknown>('tables.heartbeat', { tableId }, GAME_BRIDGE_TIMEOUT_MS)
+        .then((value) => validateSpawnTablePlayerStatus(value, tableId, targetOrigin))
+        .catch(() => { if (tableWatches.get(tableId) === watch) stopTableWatch(tableId); })
+        .finally(() => { watch.inFlight = false; });
+    };
+    watch.timer = setInterval(tick, TABLE_HEARTBEAT_INTERVAL_MS);
+    tableWatches.set(tableId, watch);
+    tick();
+    return () => stopTableWatch(tableId);
+  }
+
   function dispose(): void {
     if (disposed) return;
     disposed = true;
+    for (const watch of tableWatches.values()) clearInterval(watch.timer);
+    tableWatches.clear();
     gameWindow.removeEventListener('message', onWindowMessage);
     if (connectedPort) {
       connectedPort.removeEventListener('message', onPortMessage);
@@ -566,6 +648,63 @@ export function createSpawnGameClient(options: { platformOrigin?: string } = {})
         if (!safeTokenPayment(value, targetOrigin)) throw new Error('Spawn bridge returned an invalid token payment receipt.');
         return value;
       });
+    },
+    tables: {
+      buyIn: (input: SpawnTableBrowserBuyInInput) => {
+        if (!isObject(input) || !exactObjectKeys(input, ['tableId', 'buyInId'])) {
+          return Promise.reject(new Error('A table ID and buy-in ID are required.'));
+        }
+        let tableId: string;
+        let buyInId: string;
+        try {
+          tableId = normalizeTableId(input.tableId);
+          buyInId = normalizeTableId(input.buyInId);
+        } catch (error) {
+          return Promise.reject(error instanceof Error ? error : new Error('Invalid table buy-in request.'));
+        }
+        return request<unknown>('tables.buyIn', { tableId, buyInId }, GAME_BRIDGE_PAYMENT_TIMEOUT_MS)
+          .then((value) => {
+            const result = validateSpawnTableBuyInResult(value, tableId, buyInId);
+            return result;
+          });
+      },
+      status: (tableId: string) => {
+        let id: string;
+        try { id = normalizeTableId(tableId); }
+        catch (error) { return Promise.reject(error instanceof Error ? error : new Error('Invalid table ID.')); }
+        return request<unknown>('tables.status', { tableId: id }, GAME_BRIDGE_TIMEOUT_MS)
+          .then((value) => validateSpawnTablePlayerStatus(value, id, targetOrigin));
+      },
+      heartbeat: (tableId: string) => {
+        let id: string;
+        try { id = normalizeTableId(tableId); }
+        catch (error) { return Promise.reject(error instanceof Error ? error : new Error('Invalid table ID.')); }
+        return request<unknown>('tables.heartbeat', { tableId: id }, GAME_BRIDGE_TIMEOUT_MS)
+          .then((value) => validateSpawnTablePlayerStatus(value, id, targetOrigin));
+      },
+      leave: (input: SpawnTableBrowserLeaveInput) => {
+        if (!isObject(input) || !exactObjectKeys(input, ['tableId', 'operationId', 'seatId'])) {
+          return Promise.reject(new Error('A table ID, operation ID and seat ID are required.'));
+        }
+        let tableId: string;
+        let operationId: string;
+        let seatId: string;
+        try {
+          tableId = normalizeTableId(input.tableId);
+          operationId = normalizeOperationId(input.operationId);
+          seatId = normalizeSeatId(input.seatId);
+        } catch (error) {
+          return Promise.reject(error instanceof Error ? error : new Error('Invalid table leave request.'));
+        }
+        return request<unknown>('tables.leave', { tableId, operationId, seatId }, GAME_BRIDGE_TIMEOUT_MS)
+          .then((value) => validateSpawnTablePlayerStatus(value, tableId, targetOrigin));
+      },
+      watch: (tableId: string) => {
+        let id: string;
+        try { id = normalizeTableId(tableId); }
+        catch (error) { throw error instanceof Error ? error : new Error('Invalid table ID.'); }
+        return startTableWatch(id);
+      },
     },
     dispose,
   };

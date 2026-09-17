@@ -2,6 +2,8 @@
 
 Supported testnet player-versus-player matches use the Listing token through `createSpawnMatchClient` on an activated authoritative server. The restrictions below prohibit browser-trusted payouts and unsupported mainnet settlement; they do not prohibit this documented testnet flow. Read [match payments](match-payments.md).
 
+SDK 0.9.0 also supports [persistent 2–6 player tables](table-bankroll.md) through `createSpawnTableClient` and the same dedicated server credential. Spawn confirms each exact buy-in and isolates its backing; the game server manages only those approved stacks. Ordinary creator-pool payouts cannot consume table backing. Each hand must conserve the recorded funds, but conserved funds do not prove honest game outcomes. Test retries, disconnects and durable recovery before releasing an integration.
+
 
 Read this before using an AI agent to integrate Spawn. This source SDK supports isolated creator previews and a separate registered multiplayer launch helper. It grants no access to Spawn private infrastructure; multiplayer creators operate their own servers.
 

@@ -116,6 +116,10 @@ The selector must resolve to one exact enabled asset returned by Spawn's current
 
 `token get` uses a downloaded file with `build:read`, `token:configure`, or legacy read access. If no token is selected, it returns `{ settings: null }`; the first `token configure` uses `--version 0`, and hosted payments remain unavailable until a Listing token is configured. The local `spawn-dev` simulator remains fixed TEST and does not emulate a configured Listing purchase. `token configure` requires an explicit new `token:configure` scope; older credentials must be downloaded again. Token search does not send the publish key to the public asset-list endpoint. If the endpoint or scope is unavailable, stop and report that limitation instead of using a dashboard cookie or custom API call.
 
+## Persistent tables
+
+SDK 0.9.0 table support uses the existing creator server registration and dedicated `match.key`; publishing a browser build does not deploy the authoritative server, table persistence or the matching Spawn 0.9 table service. Configure and deploy the creator-owned server separately, keep its table journal durable, and test confirmed buy-ins, hand recovery and cash-out reconciliation with signed-in members. See [table bankroll](table-bankroll.md) for the server and browser contracts.
+
 ## Browser build format
 
 | Game/build | Support |
