@@ -35,6 +35,7 @@ export type SpawnMatchClosureResult = SpawnMatchCancelResult & {
   /** Durable proof that this ID cannot reserve funds in the future. */
   creationClosed: true;
   closedBeforeCreation: boolean;
+  remainingReservedAmount: "0";
 };
 export type SpawnMatchSettlementResult = {
   matchId: string;
@@ -220,7 +221,7 @@ export function createSpawnMatchClient(options: SpawnMatchClientOptions) {
         throw new Error("Invalid match status.");
       if (action === "close-creation") {
         if (value.status !== "cancelled" || value.projectId !== project ||
-            value.creationClosed !== true || typeof value.closedBeforeCreation !== "boolean" ||
+            value.creationClosed !== true || value.remainingReservedAmount !== "0" || typeof value.closedBeforeCreation !== "boolean" ||
             typeof value.reason !== "string" || !value.reason || value.reason.length > 128 ||
             !Number.isSafeInteger(value.cancelledAt) || (value.cancelledAt as number) < 0 ||
             !Array.isArray(value.refunds) || value.refunds.length > 2)
@@ -237,7 +238,10 @@ export function createSpawnMatchClient(options: SpawnMatchClientOptions) {
             throw new Error("Invalid closure refund.");
           players.add(refund.playerId.toLowerCase());
           amount(refund.amount, true);
-          refunded += units(refund.amount as string);
+          const refundUnits = units(refund.amount as string);
+          if (refundUnits * 2n !== units(value.potAmount as string))
+            throw new Error("Refund does not match an equal-entry match.");
+          refunded += refundUnits;
         }
         if (refunded > units(value.potAmount as string)) throw new Error("Refund exceeds match pot.");
         if (!value.closedBeforeCreation) amount(value.potAmount, true);

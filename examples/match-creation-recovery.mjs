@@ -12,13 +12,29 @@ export async function cancelUncertainCreation(matches, definition) {
       ? error.toJSON() : { code: 'RECOVERY_UNRESOLVED' },
   });
   function confirmedCancellation(result) {
-    return result?.matchId === definition.matchId.toLowerCase() && result.status === 'cancelled' &&
-      typeof result.reason === 'string' && Number.isSafeInteger(result.cancelledAt) &&
-      result.cancelledAt >= 0 && typeof result.potAmount === 'string' &&
-      /^(?:0|[1-9][0-9]*)(?:\.[0-9]+)?$/.test(result.potAmount) &&
-      Array.isArray(result.refunds) && result.refunds.length <= 2 &&
-      result.refunds.every(r => definition.players.some(p => p.playerId.toLowerCase() === r.playerId) &&
-        typeof r.amount === 'string' && /^(?:0|[1-9][0-9]*)(?:\.[0-9]+)?$/.test(r.amount));
+    const decimal = value => typeof value === 'string' && value.length <= 115 &&
+      /^(?:0|[1-9][0-9]*)(?:\.[0-9]{1,36})?$/.test(value);
+    const units = value => {
+      const [whole, fraction = ''] = value.split('.');
+      return BigInt(whole + fraction.padEnd(36, '0'));
+    };
+    if (result?.matchId !== definition.matchId.toLowerCase() || result.status !== 'cancelled' ||
+        result.creationClosed !== true || result.remainingReservedAmount !== '0' ||
+        typeof result.closedBeforeCreation !== 'boolean' || typeof result.reason !== 'string' ||
+        !Number.isSafeInteger(result.cancelledAt) || result.cancelledAt < 0 ||
+        !decimal(result.potAmount) || !decimal(definition.amount) ||
+        !Array.isArray(result.refunds) || result.refunds.length > 2) return false;
+    if (result.closedBeforeCreation) return result.potAmount === '0' && result.refunds.length === 0;
+    const entry = units(definition.amount);
+    const seen = new Set();
+    return entry > 0n && units(result.potAmount) === entry * 2n && result.refunds.every(r => {
+      if (typeof r.playerId !== 'string') return false;
+      const id = r.playerId.toLowerCase();
+      if (seen.has(id) || !definition.players.some(p => p.playerId.toLowerCase() === id) ||
+          !decimal(r.amount) || units(r.amount) !== entry) return false;
+      seen.add(id);
+      return true;
+    });
   }
   try {
     // This deliberately abandons the attempt. It never replays create and does not

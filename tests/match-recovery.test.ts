@@ -9,7 +9,7 @@ const definition = { matchId, amount: '10', players: [
   { playerId: randomUUID(), launchId: randomUUID() },
 ] };
 const proof = { projectId, matchId, status: 'cancelled', reason: 'technical', cancelledAt: 1,
-  refunds: [], potAmount: '0', creationClosed: true, closedBeforeCreation: true };
+  refunds: [], potAmount: '0', creationClosed: true, closedBeforeCreation: true, remainingReservedAmount:'0' };
 const make = (fetch: typeof globalThis.fetch) => createSpawnMatchClient({ platformOrigin: 'https://spawn.example', projectId, credential: 'a'.repeat(43), fetch });
 
 test('absent creation closes directly without replaying expired player launches', async () => {
@@ -49,6 +49,8 @@ test('rejections including absent endpoint and running conflict never authorize 
 test('closure requires bound, internally consistent proof; legacy cancellation is insufficient', async () => {
   for (const patch of [
     {closedBeforeCreation:false, potAmount:'20', refunds:[{playerId:definition.players[0].playerId,amount:'21'}]},
+    {remainingReservedAmount:'1'}, {remainingReservedAmount:undefined},
+    {closedBeforeCreation:false, potAmount:'20', refunds:[{playerId:definition.players[0].playerId,amount:'1'}]},
     {creationClosed: false}, {projectId: randomUUID()}, {matchId: randomUUID()}, {status:'running'},
     {closedBeforeCreation:undefined}, {cancelledAt:-1}, {reason:''}, {potAmount:'1e8'},
     {potAmount:'2'}, {refunds:[{playerId:definition.players[0].playerId,amount:'1'}]},
@@ -65,4 +67,12 @@ test('confirmed pending cancellation refunds only the saved players', async () =
   const refund = {...proof, closedBeforeCreation:false, potAmount:'20', refunds:[{playerId:definition.players[0].playerId,amount:'10'}]};
   assert.equal((await cancelUncertainCreation(make(async () => Response.json(refund)), definition)).replacementAllowed, true);
   assert.equal((await cancelUncertainCreation(make(async () => Response.json({...refund, refunds:[{playerId:randomUUID(),amount:'10'}]})), definition)).replacementAllowed, false);
+});
+
+
+test('recovery compares exact saved wager and accepts normalized refund UUIDs', async () => {
+  const result = {...proof,closedBeforeCreation:false,potAmount:'20',refunds:[{playerId:definition.players[0].playerId.toUpperCase(),amount:'10.0'}]};
+  assert.equal((await cancelUncertainCreation(make(async()=>Response.json(result)),definition)).replacementAllowed,true);
+  const wrong = {...result,potAmount:'2',refunds:[{playerId:definition.players[0].playerId,amount:'1'}]};
+  assert.equal((await cancelUncertainCreation(make(async()=>Response.json(wrong)),definition)).replacementAllowed,false);
 });
