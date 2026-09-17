@@ -21,19 +21,11 @@ export async function cancelUncertainCreation(matches, definition) {
         typeof r.amount === 'string' && /^(?:0|[1-9][0-9]*)(?:\.[0-9]+)?$/.test(r.amount));
   }
   try {
-    let state;
-    try { state = await matches.status(definition.matchId); }
-    catch (error) {
-      if (error?.name !== 'SpawnMatchRequestError' || error.status !== 404) throw error;
-      // Explicit same-ID reconciliation, NOT a retry with a new wager, roster or ID.
-      // Spawn's immutable-ID create is idempotent, including after cancellation.
-      state = await matches.create(definition);
-    }
-    if (state.status === 'running' || state.status === 'settled') {
-      return { matchId: state.matchId, resolution: state.status, replacementAllowed: false };
-    }
-    const result = state.status === 'cancelled' ? state.result
-      : state.status === 'pending' ? await matches.cancel(definition.matchId, 'technical') : null;
+    // This deliberately abandons the attempt. It never replays create and does not
+    // require active launches. Spawn fences absent IDs and refunds pending matches
+    // in the same serialized transaction as create/confirm/capture.
+    const result = await matches.closeCreation(definition.matchId);
+    if (result?.creationClosed !== true || typeof result.closedBeforeCreation !== 'boolean') return unresolved();
     if (!confirmedCancellation(result)) return unresolved();
     return { matchId: result.matchId, resolution: 'cancelled', replacementAllowed: true, result };
   } catch (error) {

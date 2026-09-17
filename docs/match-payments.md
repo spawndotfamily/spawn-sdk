@@ -45,7 +45,7 @@ Direct player gifts and two-way token trades use [the trade API](trades.md), not
 
 ## Error handling before implementation
 
-Read [match errors and recovery](match-recovery.md). Save the exact match definition before create and retain each structured error. A status404 after an uncertain create is not cancellation. The tested recovery example uses the same immutable ID and requires confirmed cancellation before a replacement. Do not open player approval until create succeeds.
+Read [match errors and recovery](match-recovery.md). Save the exact match definition before create and retain each structured error. A status404 after an uncertain create is not cancellation. SDK 0.7.2 provides closeCreation(matchId) and a tested recovery example: permanently fence an absent ID or refund a pending match without fresh launches, and require confirmed closure before a replacement. Do not open player approval until create succeeds.
 
 ## Server lifecycle
 

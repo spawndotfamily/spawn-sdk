@@ -109,3 +109,5 @@ Player-to-player token gifts and atomic two-way trades are available through `cl
 ## Creator server registration
 
 SDK 0.7.0 includes [self-service server setup](docs/server-setup.md). Fresh `server:configure` credentials authorize settings for the creator's own game; the SDK generates separate private match credentials locally and registers only hashes. No Spawn VPS access is needed. Configure through the CLI, deploy the creator's own server, then verify two-member settlement before claiming completion. Setup does not authorize spending for players or grant platform administration.
+
+Match recovery: server SDK 0.7.2 adds `closeCreation(matchId)` for uncertain attempts with expired launches. Read [the recovery contract](docs/match-recovery.md); persist confirmed closure before replacement.

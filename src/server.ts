@@ -138,6 +138,6 @@ export function createSpawnLaunchVerifier(options: SpawnLaunchVerificationOption
 }
 
 export { createSpawnMatchClient, SpawnMatchRequestError } from './match-server.ts';
-export type { SpawnMatchClient, SpawnMatchClientOptions, SpawnMatchDefinition, SpawnMatchPlayer, SpawnMatchSettlement, SpawnMatchStatus, SpawnMatchAsset, SpawnMatchCancelResult, SpawnMatchSettlementResult } from './match-server.ts';
+export type { SpawnMatchClient, SpawnMatchClientOptions, SpawnMatchDefinition, SpawnMatchPlayer, SpawnMatchSettlement, SpawnMatchStatus, SpawnMatchAsset, SpawnMatchCancelResult, SpawnMatchClosureResult, SpawnMatchSettlementResult } from './match-server.ts';
 
 export type { SpawnMatchErrorCode, SpawnMatchErrorDetails } from "./match-errors.ts";

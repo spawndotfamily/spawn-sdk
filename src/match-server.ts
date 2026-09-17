@@ -30,6 +30,12 @@ export type SpawnMatchCancelResult = {
   refunds: { playerId: string; amount: string }[];
   potAmount: string;
 };
+export type SpawnMatchClosureResult = SpawnMatchCancelResult & {
+  projectId: string;
+  /** Durable proof that this ID cannot reserve funds in the future. */
+  creationClosed: true;
+  closedBeforeCreation: boolean;
+};
 export type SpawnMatchSettlementResult = {
   matchId: string;
   status: "settled";
@@ -205,18 +211,47 @@ export function createSpawnMatchClient(options: SpawnMatchClientOptions) {
       if (
         action !== "cancel" &&
         action !== "settle" &&
+        action !== "close-creation" &&
         (value.projectId !== project ||
           typeof value.allConfirmed !== "boolean" ||
           !Array.isArray(value.players) ||
           value.players.length !== 2)
       )
         throw new Error("Invalid match status.");
+      if (action === "close-creation") {
+        if (value.status !== "cancelled" || value.projectId !== project ||
+            value.creationClosed !== true || typeof value.closedBeforeCreation !== "boolean" ||
+            typeof value.reason !== "string" || !value.reason || value.reason.length > 128 ||
+            !Number.isSafeInteger(value.cancelledAt) || (value.cancelledAt as number) < 0 ||
+            !Array.isArray(value.refunds) || value.refunds.length > 2)
+          throw new Error("Invalid creation closure proof.");
+        amount(value.potAmount, false);
+        const units = (v: string) => {
+          const [whole, fraction = ""] = v.split(".");
+          return BigInt(whole! + fraction.padEnd(36, "0"));
+        };
+        let refunded = 0n;
+        const players = new Set<string>();
+        for (const refund of value.refunds) {
+          if (!record(refund) || !uuid(refund.playerId) || players.has(refund.playerId.toLowerCase()))
+            throw new Error("Invalid closure refund.");
+          players.add(refund.playerId.toLowerCase());
+          amount(refund.amount, true);
+          refunded += units(refund.amount as string);
+        }
+        if (refunded > units(value.potAmount as string)) throw new Error("Refund exceeds match pot.");
+        if (!value.closedBeforeCreation) amount(value.potAmount, true);
+        if (value.closedBeforeCreation && (value.potAmount !== "0" || value.refunds.length !== 0))
+          throw new Error("An absent creation cannot have reserved funds.");
+      }
       return value as T;
     } catch (error) {
       if (error instanceof SpawnMatchRequestError) throw error;
       throw new SpawnMatchRequestError(
         mutation
-          ? "Match outcome is unknown. Query status with the same match ID before taking another action."
+          ? action === "close-creation"
+            ? "Creation closure is unconfirmed. Keep the attempt blocked and explicitly repeat closeCreation with the same ID."
+            : "Match outcome is unknown. Query status with the same match ID before taking another action."
           : "Could not read match status.",
         responseStatus,
         mutation,
@@ -252,6 +287,8 @@ export function createSpawnMatchClient(options: SpawnMatchClientOptions) {
         })),
       });
     },
+    /** Explicitly abandon an uncertain creation. Safe to repeat with the same ID after a lost reply. */
+    closeCreation: (matchId: string) => request<SpawnMatchClosureResult>(matchId, "close-creation", {}),
     status: (matchId: string) => request(matchId, ""),
     capture: (matchId: string) => request(matchId, "capture", {}),
     heartbeat: (matchId: string) => request(matchId, "heartbeat", {}),

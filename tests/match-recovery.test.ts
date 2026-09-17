@@ -8,66 +8,61 @@ const definition = { matchId, amount: '10', players: [
   { playerId: randomUUID(), launchId: randomUUID() },
   { playerId: randomUUID(), launchId: randomUUID() },
 ] };
-const pending = { projectId, matchId, status: 'pending', allConfirmed: false,
-  players: definition.players.map(p => ({ playerId: p.playerId, confirmed: false })) };
-const cancelled = { matchId, status: 'cancelled', reason: 'technical', cancelledAt: 1, refunds: [], potAmount: '20' };
+const proof = { projectId, matchId, status: 'cancelled', reason: 'technical', cancelledAt: 1,
+  refunds: [], potAmount: '0', creationClosed: true, closedBeforeCreation: true };
 const make = (fetch: typeof globalThis.fetch) => createSpawnMatchClient({ platformOrigin: 'https://spawn.example', projectId, credential: 'a'.repeat(43), fetch });
 
-test('absence converges on original definition, then cancels; delayed duplicate stays cancelled', async () => {
-  let state: any = null;
-  const sent: any[] = [];
-  const client = make(async (url, options) => {
-    const body = options?.body ? JSON.parse(String(options.body)) : null;
-    sent.push({ url: String(url), body });
-    if (options?.method === 'GET') return state ? Response.json(state) : Response.json({ error: 'Match not found.' }, { status: 404 });
-    if (String(url).endsWith('/cancel')) {
-      state = { ...pending, status: 'cancelled', result: cancelled };
-      return Response.json(cancelled);
-    }
-    assert.deepEqual(body, definition);
-    state ??= pending;
-    return Response.json(state, { status: 201 });
-  });
-  const result = await cancelUncertainCreation(client, definition);
+test('absent creation closes directly without replaying expired player launches', async () => {
+  let calls = 0;
+  const result = await cancelUncertainCreation(make(async (url, init) => {
+    calls++;
+    assert.equal(String(url), `https://spawn.example/api/v1/registered-games/${projectId}/matches/${matchId}/close-creation`);
+    assert.equal(init?.method, 'POST');
+    assert.deepEqual(JSON.parse(String(init?.body)), {});
+    assert.equal(init?.credentials, 'omit');
+    assert.equal(init?.redirect, 'error');
+    return Response.json(proof);
+  }), definition);
   assert.equal(result.replacementAllowed, true);
-  assert.equal(result.matchId, matchId);
-  assert.equal(sent.length, 3);
-  assert.deepEqual(sent[1].body, definition);
-  // A delayed original has the same immutable identity and cannot create a new pot.
-  assert.equal((await client.create(definition)).status, 'cancelled');
+  assert.deepEqual(result.result, proof);
+  assert.equal(calls, 1);
 });
 
-test('a failed same-ID create never turns earlier uncertainty into a definite rejection', async () => {
-  let count = 0;
-  const client = make(async () => { count++; return Response.json({ error: count === 1 ? 'Match not found.' : 'Player launch expired.' }, { status: count === 1 ? 404 : 409 }); });
-  const result = await cancelUncertainCreation(client, definition);
-  assert.equal(result.replacementAllowed, false);
-  assert.equal(result.resolution, 'unresolved');
-  assert.equal(result.error.status, 409);
-  assert.equal(result.error.reason, 'Player launch expired.');
-  assert.equal(count, 2);
-});
-
-test('cancellation timeout stays unresolved; later terminal status completes recovery', async () => {
-  let count = 0;
-  const client = make(async () => { count++; if (count === 1) return Response.json(pending); if (count === 2) throw new Error('lost response'); return Response.json({ ...pending, status: 'cancelled', result: cancelled }); });
+test('lost closure response blocks replacement until an explicit same-ID closure retry succeeds', async () => {
+  let calls = 0;
+  const client = make(async () => { if (++calls === 1) throw new Error('lost'); return Response.json(proof); });
   assert.equal((await cancelUncertainCreation(client, definition)).replacementAllowed, false);
+  assert.equal(calls, 1);
   assert.equal((await cancelUncertainCreation(client, definition)).replacementAllowed, true);
-  assert.equal(count, 3);
 });
 
-test('running/settled matches and malformed cancellation proof cannot authorize replacement', async () => {
-  for (const state of [ { ...pending, status: 'running' }, { ...pending, status: 'settled' }, { ...pending, status: 'cancelled', result: null } ]) {
+test('rejections including absent endpoint and running conflict never authorize replacement', async () => {
+  for (const status of [401,403,404,409,429,503]) {
     let calls = 0;
-    const result = await cancelUncertainCreation(make(async () => { calls++; return Response.json(state); }), definition);
+    const result = await cancelUncertainCreation(make(async () => { calls++; return Response.json({error:'blocked'}, {status}); }), definition);
     assert.equal(result.replacementAllowed, false);
+    assert.equal(result.error.status, status);
     assert.equal(calls, 1);
   }
 });
 
-test('non-404 status failures do not start a mutation', async () => {
-  let calls = 0;
-  const result = await cancelUncertainCreation(make(async () => { calls++; return Response.json({ error: 'unavailable' }, { status: 503 }); }), definition);
-  assert.equal(result.replacementAllowed, false);
-  assert.equal(calls, 1);
+test('closure requires bound, internally consistent proof; legacy cancellation is insufficient', async () => {
+  for (const patch of [
+    {closedBeforeCreation:false, potAmount:'20', refunds:[{playerId:definition.players[0].playerId,amount:'21'}]},
+    {creationClosed: false}, {projectId: randomUUID()}, {matchId: randomUUID()}, {status:'running'},
+    {closedBeforeCreation:undefined}, {cancelledAt:-1}, {reason:''}, {potAmount:'1e8'},
+    {potAmount:'2'}, {refunds:[{playerId:definition.players[0].playerId,amount:'1'}]},
+    {closedBeforeCreation:false, refunds:[{playerId:'fake',amount:'1'}]},
+    {closedBeforeCreation:false, refunds:[{playerId:definition.players[0].playerId,amount:'-1'}]},
+    {closedBeforeCreation:false, potAmount:'20', refunds:[{playerId:definition.players[0].playerId,amount:'10'},{playerId:definition.players[0].playerId,amount:'10'}]},
+  ]) {
+    const result = await cancelUncertainCreation(make(async () => Response.json({...proof,...patch})), definition);
+    assert.equal(result.replacementAllowed, false, JSON.stringify(patch));
+  }
+});
+
+test('confirmed pending cancellation refunds only the saved players', async () => {
+  const refund = {...proof, closedBeforeCreation:false, potAmount:'20', refunds:[{playerId:definition.players[0].playerId,amount:'10'}]};
+  assert.equal((await cancelUncertainCreation(make(async () => Response.json(refund)), definition)).replacementAllowed, true);
+  assert.equal((await cancelUncertainCreation(make(async () => Response.json({...refund, refunds:[{playerId:randomUUID(),amount:'10'}]})), definition)).replacementAllowed, false);
 });

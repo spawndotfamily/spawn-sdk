@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.7.2 — 2026-09-17
+
+### Added
+- Server-only `closeCreation(matchId)` and validated `SpawnMatchClosureResult`: permanently close an absent creation ID, or cancel/refund a pending match, using the game's ordinary dedicated match credential.
+
+### Changed
+- Recovery no longer recreates an absent match using expired launches. The packaged example calls the closure endpoint, blocks on uncertain/malformed responses, and preserves running/settled matches.
+- Closure is serialized with create/confirm/capture; durable project-scoped fences prevent delayed creation after closure. Repeated closure returns the same recorded result.
+
+### Upgrade notes
+- Pin 0.7.2, rebuild and redeploy your authoritative server. Read docs/match-recovery.md and copy the updated examples/match-creation-recovery.mjs. Install on the server, not only in the browser bundle.
+- Requires the matching hosted close-creation endpoint. Persist confirmed closure before unblocking an old attempt. A 404 or lost response is not proof; explicitly repeat closeCreation with the original ID. Never replace saved launch IDs to force recovery.
+- New matches still need fresh verified launches and individual Spawn token approval. This does not fix game-specific endless loading or prove two-player settlement; game agents must implement bounded errors and test their own integration.
+
 ## 0.7.1 — 2026-09-17
 
 ### Added

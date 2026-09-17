@@ -39,11 +39,21 @@ if (recovery.replacementAllowed) {
 }
 ```
 
-The example reads status; if it returns 404, it makes one explicit same-ID create, then cancels a pending match. It returns `replacementAllowed: true` only after confirming a cancelled result. Spawn retains the cancelled match row, so a delayed duplicate create using the original ID cannot resurrect it or reserve a new pot. Existing player reservations are refunded by the platform's cancellation operation. No balance transfer is inferred from a browser click.
+SDK 0.7.2 calls `matches.closeCreation(savedDefinition.matchId)` directly. It deliberately **abandons** creation; it never replays `create`, substitutes fresh launches or opens approval. The method requires this project's dedicated match credential, but does not require active player launches, an unchanged Listing or permission to start new games.
 
-If the match is running or settled, the example does not cancel it or allow replacement; reconcile gameplay or the terminal payouts instead. If a launch expired, setup changed, the network failed, or the platform cannot confirm cancellation, it returns unresolved. Neither waiting a fixed number of seconds nor a404 proves safe absence. Keep the record and seek platform diagnosis; the current API has no “close an absent match ID” endpoint. Do not invent one, rotate credentials as a workaround, or create a new ID to get around an unresolved attempt.
+Spawn serializes this operation with creation, confirmation and capture:
 
-This release adds SDK diagnostics and a recovery example using existing endpoints. It does **not** deploy platform logging, retrospectively recover a discarded error, repair a particular game's journal, or guarantee the hosted service is healthy. A private operator investigation may still be necessary for a historical unresolved attempt.
+- **Absent ID:** stores a durable project-scoped closure marker. A delayed create cannot insert that ID, even after service restart. No funds were reserved; `closedBeforeCreation: true`, `refunds: []`, `potAmount: '0'`.
+- **Pending match:** cancels it and refunds confirmed reservations atomically; `closedBeforeCreation: false`.
+- **Already cancelled:** returns its recorded cancellation idempotently.
+- **Running or settled:** rejects with 409. Do not replace it; read status and reconcile gameplay or payouts.
+- **Other project's match:** rejects with 404 without changing it.
+
+A successful `SpawnMatchClosureResult` includes `projectId`, `matchId`, `status: 'cancelled'`, `creationClosed: true`, `closedBeforeCreation`, `cancelledAt`, `reason`, `refunds` and `potAmount`. The SDK validates scope and proof fields. Persist the confirmed proof before releasing the old attempt's journal/player block. Keep the old ID permanently retired. A new deliberate offer uses a new ID and fresh verified launches, with each player's normal Spawn approval still required.
+
+A lost closure response remains unresolved. Under the same coordinator lock, explicitly call `closeCreation` again with the original ID; it is idempotent. Status may still return 404 for an ID closed before creation, because no match was created. **Use the closure response as proof, never404, a timer, or a local flag.** Do not automatically loop or retry other mutations. If the endpoint is unavailable, credentials were revoked, or proof is malformed, preserve the block and show the bounded diagnostic. Re-enable legitimate server credentials through the documented creator setup if needed; never bypass authorization.
+
+This requires the matching hosted `POST /api/v1/registered-games/:projectId/matches/:matchId/close-creation` endpoint with an empty JSON body. Older hosts returning 404 do not support it. SDK installation alone cannot upgrade a host. The release does not recover a discarded original error, repair a game's journal, or prove its two-player gameplay passes. It fixes the generic recovery gap in 0.7.1 where expired launches made same-ID replay impossible.
 
 ## SDK issue, platform issue, or game integration issue?
 
