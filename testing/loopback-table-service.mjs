@@ -46,8 +46,12 @@ export function createLoopbackTableService({ now = Date.now, asset: assetOverrid
     enabled: true,
   };
 
-  let clock = typeof now === 'function' ? now() : now;
-  const timestamp = () => clock;
+  // The clock is read LIVE, per call, so a caller that injects its own test clock
+  // (`now: () => myGameClock`) follows that clock instead of freezing at construction;
+  // `advance(ms)` adds a synthetic offset on top of whatever `now` reports.
+  const baseNow = typeof now === 'function' ? now() : now;
+  let offset = 0;
+  const timestamp = () => (typeof now === 'function' ? now() : baseNow) + offset;
   let state = null;
   let loseAction = null;
   const quotes = new Map();
@@ -409,13 +413,21 @@ export function createLoopbackTableService({ now = Date.now, asset: assetOverrid
       totals();
       return clone(seat);
     },
-    /** Simulate a lost HTTP response for one action, to exercise retry paths. */
+    /**
+     * Make the NEXT call to `action` behave like a dropped response: the server applies
+     * and records the mutation, then throws. Retrying with the same `operationId` replays
+     * the recorded result instead of applying again — that is how you prove idempotency.
+     */
     loseNextResponse(action) {
       loseAction = action;
     },
-    /** Advance the fake clock, then run the recovery sweep (deadlines, leases, grace). */
+    /**
+     * Move the harness clock forward by `ms`, then run the recovery sweep (quote expiry,
+     * disconnect grace, lease expiry, hand deadline). Only this method moves time; if you
+     * inject `now`, your own clock keeps driving reads and this offset layers on top.
+     */
     advance(ms) {
-      clock += ms;
+      offset += ms;
       if (state) sweep();
       return state ? clone(state) : null;
     },
@@ -423,12 +435,19 @@ export function createLoopbackTableService({ now = Date.now, asset: assetOverrid
     stubClient(overrides = {}) {
       return stubClient(client, overrides);
     },
-    /** Independent conservation check for assertions. */
+    /** Independent conservation check for assertions; `detail` states the imbalance. */
     conservation() {
       if (!state) throw new Error('No table created yet.');
       const t = totals();
-      const balanced = BigInt(t.buyIns) === BigInt(t.cashOuts) + BigInt(t.backing);
-      return { balanced, totals: clone(t), detail: `buyIns=${t.buyIns} cashOuts=${t.cashOuts} backing=${t.backing}` };
+      const delta = BigInt(t.buyIns) - (BigInt(t.cashOuts) + BigInt(t.backing));
+      return {
+        balanced: delta === 0n,
+        totals: clone(t),
+        delta: delta.toString(),
+        detail: delta === 0n
+          ? `buyIns=${t.buyIns} = cashOuts=${t.cashOuts} + backing=${t.backing}`
+          : `buyIns=${t.buyIns} != cashOuts=${t.cashOuts} + backing=${t.backing} — unbalanced by ${delta}`,
+      };
     },
   };
 }

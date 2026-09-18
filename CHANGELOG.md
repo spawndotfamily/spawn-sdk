@@ -1,5 +1,32 @@
 # Changelog
 
+## 0.9.4
+
+Everything here came from a creator-side integration report, so it is the surface that decides
+whether a non-technical creator's agent can use the harness unassisted.
+
+### Added
+
+- **TypeScript declarations ship with the harness** (`testing/loopback-table-service.d.mts`, `testing/scenario-runner.d.mts`), so editors and AI agents get real signatures instead of reading `.mjs` source.
+- **`spawn-test` bin** — run the shipped scenarios from your own project: `npx spawn-test`, or `npx spawn-test --json` for a machine-readable `{ total, passed, failed, results }` summary an agent can assert on.
+- **Shared scenario runner** (`testing/scenario-runner.mjs`): `runScenarios`, `checkConservation`, `executeScenario`, `summarize`, `wantsJson`. Your own outcome rules now run through the same runner and produce identical output.
+- **`examples/table-scenarios-custom.mjs`** — a worked example of custom outcome rules, including the two pot-conservation refusals.
+- A tenth scenario covering an injected clock.
+- Documented: the consumer run command, amounts and the fake asset, the clock contract, every harness member, and the rake constraint.
+
+### Changed
+
+- The harness clock is read **live on every call**, so `now: () => myGameClock` follows your test clock instead of freezing at construction. `advance(ms)` adds a synthetic offset on top of whatever `now` reports rather than owning time.
+- `conservation()` returns `delta` and a `detail` that names the imbalance, so a failed invariant prints the delta instead of a bare inequality.
+
+### Fixed
+
+- Scenario runs exit non-zero on failure through the shared runner, and `--json` reports the same run.
+
+### Upgrade notes
+
+- No action required: no runtime API, wire format or server behaviour changed. If you injected a clock you no longer need to move it in lockstep with `advance()`. If you parsed `conservation().detail`, it now states the imbalance. A rake cannot be taken from a pot — that is a contract property, not a harness limitation; see `testing/README.md`.
+
 ## 0.9.3
 
 ### Fixed

@@ -1,16 +1,24 @@
+#!/usr/bin/env node
 /**
  * Headless table-bankroll scenarios for the SDK loopback service.
  *
- * Run:  node testing/table-scenarios.mjs
+ * Run:  node testing/table-scenarios.mjs [--json]
+ *
+ * Consumers run the shipped copy instead (there is no `test:tables` script in your project):
+ *   npx spawn-test [--json]
+ *   node node_modules/@spawndotfamily/sdk/testing/table-scenarios.mjs [--json]
  *
  * Every scenario asserts the platform invariant after each money step:
  *   buyIns = cashOuts + stacks + committed + pendingCashOuts
  * A failed assertion exits non-zero, so this can gate CI or a pre-publish check.
+ * `--json` prints `{ title, total, passed, failed, results }` for programmatic assertion.
  */
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
-import { createLoopbackTableService } from './loopback-table-service.mjs';
+import { createLoopbackTableService, TABLE_POLICY } from './loopback-table-service.mjs';
+import { checkConservation, executeScenario, summarize, wantsJson } from './scenario-runner.mjs';
 
+const json = wantsJson();
 const results = [];
 const op = () => randomUUID();
 const ALICE = randomUUID();
@@ -19,21 +27,9 @@ const [hand1, hand2, hand3] = [randomUUID(), randomUUID(), randomUUID()];
 const seatOf = (service, playerId) =>
   service.state().seats.find((seat) => seat.playerId === playerId).seatId;
 
+/** Declare-and-run in file order through the shared runner (see scenario-runner.mjs). */
 async function scenario(name, run) {
-  try {
-    await run();
-    results.push({ name, ok: true });
-    console.log(`PASS  ${name}`);
-  } catch (error) {
-    results.push({ name, ok: false, error });
-    console.log(`FAIL  ${name}`);
-    console.log(`      ${error.message}`);
-  }
-}
-
-function checkConservation(service) {
-  const { balanced, detail } = service.conservation();
-  assert.equal(balanced, true, `conservation broken: ${detail}`);
+  results.push(await executeScenario(name, run, { json }));
 }
 
 /** Buy in and confirm, returning the seat id. */
@@ -332,10 +328,28 @@ await scenario('a stubbed method replaces one call while the rest stay real', as
   checkConservation(service);
 });
 
-const failed = results.filter((result) => !result.ok);
-console.log('');
-console.log(`${results.length - failed.length}/${results.length} scenarios passed`);
-if (failed.length > 0) {
-  console.log('Failed:', failed.map((result) => result.name).join(', '));
-  process.exitCode = 1;
-}
+await scenario('an injected clock drives the service instead of freezing at construction', async () => {
+  let gameClock = 1_700_000_000_000;
+  const playerId = randomUUID();
+  const service = createLoopbackTableService({ now: () => gameClock });
+  const tableId = randomUUID();
+  const buyInId = randomUUID();
+  await service.client.create({ tableId, operationId: op(), maxSeats: 2 });
+  await service.client.requestBuyIn(tableId, {
+    operationId: op(),
+    buyInId,
+    player: { playerId, launchId: randomUUID() },
+    amount: '100',
+  });
+  assert.equal((await service.client.buyIn(tableId, buyInId)).status, 'pending');
+  gameClock += TABLE_POLICY.quoteMs + 1_000; // your game clock, not a harness call
+  assert.throws(
+    () => service.confirmBuyIn(playerId),
+    /expired/i,
+    'the service must follow an injected now(): otherwise game time and service time drift',
+  );
+  checkConservation(service);
+});
+
+const summary = summarize(results, { json });
+process.exitCode = summary.failed === 0 ? 0 : 1;

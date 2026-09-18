@@ -1,12 +1,13 @@
 {
   "name": "@spawndotfamily/sdk",
-  "version": "0.9.3",
+  "version": "0.9.4",
   "type": "module",
   "description": "Browser game SDK, isolated local testing, and private-preview publishing tools for Spawn.",
   "license": "MIT",
   "bin": {
     "spawn-publish": "dist/cli/run.js",
-    "spawn-dev": "dist/dev/run.js"
+    "spawn-dev": "dist/dev/run.js",
+    "spawn-test": "testing/table-scenarios.mjs"
   },
   "exports": {
     ".": {

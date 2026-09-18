@@ -56,10 +56,67 @@ await service.client.requestBuyIn(tableId, { operationId, buyInId, player: { pla
 service.confirmBuyIn(playerId);
 
 service.state(playerId);      // agent-readable: quotes, seats, stacks, totals
-service.conservation();       // { balanced, totals, detail }
+service.conservation();       // { balanced, totals, delta, detail }
 service.loseNextResponse('commitHand');  // exercise the uncertain-outcome path
 service.advance(30_000);      // move the clock to hit grace/deadline/lease paths
 ```
+
+Run the SDK's own scenarios against your install (your project has no `test:tables` script — this
+is the consumer command):
+
+```bash
+npx spawn-test            # 10 scenarios, exits non-zero on failure
+npx spawn-test --json     # { title, total, passed, failed, results } for agents
+# same thing without npx: node node_modules/@spawndotfamily/sdk/testing/table-scenarios.mjs
+```
+
+### Amounts and the fake asset
+
+Amounts are **integer base-unit strings**, never decimals: `'100'` is 100 base units, which is
+`1.00` of the default fake asset (`LOCAL`, `decimals: 2`, chain 46630). A real Listing token uses
+its own decimals, so `'100000000000000000000'` is 100 tokens at 18 decimals — always format and
+parse through the SDK helpers rather than dividing by hand, and pass the same shape your game
+uses. Override it with `createLoopbackTableService({ asset: { ... } })`.
+
+### Clock
+
+The service reads `now` **live on every call**, so injecting your own test clock keeps game time
+and service time in sync: `createLoopbackTableService({ now: () => myGameClock })`. Only
+`advance(ms)` moves the synthetic offset (then runs the recovery sweep) and it layers on top of
+whatever `now` reports. Deadlines are stored once (`leaseExpiresAt`, quote `expiresAt`) —
+advancing time does not move them, it makes them *expired*.
+
+### Harness reference
+
+| Member | What it does |
+| --- | --- |
+| `client` | The **real** SDK table client wired to the loopback service — call the same methods your game calls. |
+| `state(playerId?)` | Snapshot: `tableId, projectId, status, asset, settingsVersion, maxSeats, revision, leaseExpiresAt, maxEndsAt, seats[], hand, totals`, plus `quotes[]` and `pendingQuote`. |
+| `conservation()` | `{ balanced, totals, delta, detail }` — `detail` states the imbalance, so a failure message tells you the delta instead of just "not equal". |
+| `confirmBuyIn(playerId)` | Acts as the player approving their own quote in the Spawn overlay (the step you cannot automate in production). |
+| `reconnect(playerId)` | Clears the disconnect deadline, as a returning player would. |
+| `loseNextResponse(action)` | The next call to `action` **applies and records** the mutation, then throws. Retrying with the same `operationId` replays the recorded result instead of applying twice — that is how you prove idempotency, not just an error path. |
+| `advance(ms)` | Move time forward, then run the recovery sweep (quote expiry, disconnect grace, lease expiry, hand deadline). |
+| `stubClient(overrides)` | Replace one client method; the rest keep delegating to the real frozen client. Own-property lookup per call, so mutating `overrides` mid-test applies. |
+| `asset`, `projectId`, `calls` | The fake asset, the project id, and every call the service received. |
+| `TABLE_POLICY` | `quoteMs` 120s, `leaseMs` 90s, `disconnectGraceMs` 30s, `handDeadlineMs` 300s, `maxAgeMs` 24h. |
+
+### Adding your own outcome rules
+
+Port your game's rules (who wins, rake, blinds, ties, voids) through the shipped runner so your
+output, conservation checks and `--json` summary match ours exactly:
+
+```js
+import { runScenarios, checkConservation } from '@spawndotfamily/sdk/testing/scenario-runner.mjs';
+
+const summary = await runScenarios([
+  { name: 'house takes a 5% rake', async () => { /* ... assert ... */ } },
+], { json: true });
+process.exitCode = summary.failed === 0 ? 0 : 1;
+```
+
+TypeScript declarations ship with the package (`testing/*.d.mts`), so editors and AI agents get
+the whole surface. A complete worked example is in `examples/table-scenarios-custom.mjs`.
 
 ## Stubbing one SDK call
 
@@ -80,11 +137,17 @@ tricks): `@spawndotfamily/sdk/testing/loopback-table-service.mjs`.
 - **The player approval overlay itself.** Confirming an amount in Spawn's real
   overlay needs real member accounts; `confirmBuyIn()` simulates that step, so the
   *final* pre-publish check on a real preview is still a human action.
-- **N-player concurrency.** These scenarios are single-process. A concurrent
-  driver (N virtual players over the real browser bridge + multiplayer transport)
-  is the next piece.
+- **True concurrency.** The N-player scenarios (six seats across twenty hands, seat churn) run
+  sequentially in one process. A driver running N virtual players *concurrently* over the real
+  browser bridge and multiplayer transport is not shipped — it only matters if you run your own
+  game server.
 - **`spawn-dev` table state.** The single-player dev state hook does not yet
   expose tables; today `service.state()` is the agent-readable surface.
+- **A rake or fee out of the pot.** The contract conserves every committed base unit to the
+  players who contributed to that pot: settling short is refused (`Pot amounts do not conserve`)
+  and a participant who contributed nothing cannot be paid (`Winner is not eligible for this
+  pot`). Charge fees outside the table. `examples/table-scenarios-custom.mjs` asserts both
+  refusals so you can see the exact behaviour before designing your economy.
 
 ## Before you publish a table game
 
