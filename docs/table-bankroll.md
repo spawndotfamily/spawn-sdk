@@ -145,7 +145,9 @@ buyIns = cashOuts + stacks + committed + pendingCashOuts
 ```
 
 ```sh
-node testing/table-scenarios.mjs    # exits non-zero on any failure
+npx spawn-test    # 10 scenarios, exits non-zero on any failure
 ```
 
-Add your own scenario for your outcome rules (who wins, when a hand voids, what a tie does) — the shipped scenarios check accounting, not your game's fairness. Limitations are listed in `testing/README.md`: the player approval overlay and N-player concurrency are not covered by this harness, so one real two-account preview match is still required before publishing.
+Add your own scenario for your outcome rules (who wins, when a hand voids, what a tie does) — the shipped scenarios check accounting, not your game's fairness; `@spawndotfamily/sdk/testing/scenario-runner.mjs` runs them through the same runner, and `examples/table-scenarios-custom.mjs` is a worked example. Limitations are listed in `testing/README.md`: the player approval overlay and N-player concurrency are not covered by this harness, so one real two-account preview match is still required before publishing.
+
+**Economy note — no fee can come out of a pot.** Committed table funds belong to the players who contributed them: settling a pot short of what was committed is refused (`Pot amounts do not conserve`), and a non-contributing participant cannot be paid (`Winner is not eligible for this pot`). Design your economy so any creator or house fee is charged outside the table, not skimmed from settlements.

@@ -106,4 +106,20 @@ Testing should not require reading this folder end to end. `spawn-dev` exposes o
 
 - `window.__SPAWN_DEV_STATE__` → `{ connected, player, balances, lastScore, receiptStatus, data: { guest, saves: [{ key, version }], scores } }`
 
-Table games: `npm run test:tables` runs the shipped money-flow harness (8 scenarios; every step asserts `buyIns = cashOuts + stacks + committed + pendingCashOuts`). See `testing/README.md` for the harness API and what it does not cover.
+### Table games: the money-flow harness
+
+A table game moves tokens, so its settlement path must be tested before publishing, not after.
+Run the shipped harness from your project (there is no `test:tables` script in your project —
+that script exists only inside the SDK repo):
+
+```sh
+npx spawn-test          # 10 scenarios, exits non-zero on any failure
+npx spawn-test --json   # { total, passed, failed, results } for an agent to assert on
+```
+
+Every step asserts `buyIns = cashOuts + stacks + committed + pendingCashOuts`. Then port **your**
+outcome rules (who wins, when a hand voids, what a tie does) through
+`@spawndotfamily/sdk/testing/scenario-runner.mjs` — `examples/table-scenarios-custom.mjs` is a
+worked example, and `testing/README.md` documents the harness API and its honest gaps. Committed
+table funds always belong to the players who contributed them: a pot cannot be settled short and a
+non-contributing "house" seat cannot be paid, so charge any fee outside the table.

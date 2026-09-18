@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.9.5
+
+Another creator-side report, and again all docs — plus one thing CI should have caught and now does.
+
+### Fixed
+
+- **Documented commands that only work inside the SDK repo.** `docs/testing.md` told creators to run `npm run test:tables` (a script their project does not have) and said "8 scenarios"; `testing/README.md` and `docs/table-bankroll.md` — including the **pre-publish checklist** — said `node testing/table-scenarios.mjs`, which does not exist from a consumer project root. Every runnable snippet is now a consumer path (`npx spawn-test`, with the `node_modules/...` form as the fallback), and the count is 10 in both places.
+- `docs/testing.md` had no harness section at all — the highest-value pre-launch tool for a table game was one buried, wrong sentence. It now teaches the harness where testing is explained.
+
+### Added
+
+- The harness declarations are **type-checked by CI**: `npm run check` also compiles a consumer-style usage file against `testing/*.d.mts`, so the types are verified by the build instead of by a maintainer's report. (Verified the check fails on a wrong type, so it is not passing vacuously.)
+- `docs/table-bankroll.md` carries the economy rule where economies get designed: a fee cannot come out of a pot — committed funds belong to the contributors, so charge fees outside the table.
+
+### Changed
+
+- The release workflow builds **before** `check`, because the harness declarations reference the built server types; `npm test` still runs first.
+
+### Upgrade notes
+
+- No action required: documentation and a type-check only. No runtime API, wire format or server behaviour changed.
+
 ## 0.9.4
 
 Everything here came from a creator-side integration report, so it is the surface that decides

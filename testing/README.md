@@ -13,13 +13,17 @@ and get a pass/fail answer before publishing.
 | File | Purpose |
 | --- | --- |
 | `loopback-table-service.mjs` | A test double that speaks the platform's table contract on loopback, so the **real** SDK client and its validators drive it. |
-| `table-scenarios.mjs` | Eight scripted scenarios — unequal all-ins/side pots, cash-outs, disconnect grace, reconnect, lost-response retry, abandoned-hand refund, six seats across twenty hands, and mid-session seat churn — each asserting the money invariant. |
+| `table-scenarios.mjs` | Ten scripted scenarios — unequal all-ins/side pots, cash-outs, disconnect grace, reconnect, lost-response retry, abandoned-hand refund, six seats across twenty hands, mid-session seat churn, a stubbed client method, and an injected clock — each asserting the money invariant. Shipped as the `spawn-test` command. |
 
-Run it:
+Run it (from your own project — the paths below are consumer paths):
 
 ```sh
-node testing/table-scenarios.mjs      # exits non-zero if any scenario fails
+npx spawn-test                        # exits non-zero if any scenario fails
+npx spawn-test --json                 # machine-readable summary
+node node_modules/@spawndotfamily/sdk/testing/table-scenarios.mjs   # same thing, no npx
 ```
+
+Working inside the SDK repo itself, run `node testing/table-scenarios.mjs` instead.
 
 ## Why a test double instead of the real platform
 
@@ -151,7 +155,7 @@ tricks): `@spawndotfamily/sdk/testing/loopback-table-service.mjs`.
 
 ## Before you publish a table game
 
-1. `node testing/table-scenarios.mjs` is green.
+1. `npx spawn-test` is green (add `--json` to assert the summary in CI).
 2. You have a scenario for **your** game's outcome rules, not just the defaults
    here (who wins, when the hand voids, what a tie does).
 3. Every player who can be disconnected, idle or crash-recovered still gets their

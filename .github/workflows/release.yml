@@ -43,8 +43,10 @@ jobs:
           fi
       - run: npm ci --ignore-scripts
       - run: npm test
-      - run: npm run check
       - run: npm run build
+      # `check` also type-checks the shipped harness declarations, which reference the built
+      # server types — so it must run after the build.
+      - run: npm run check
       - run: node --test tests/dev-launcher.integration.mjs
       - name: Publish using npm trusted publishing
         run: npm publish --access public --ignore-scripts

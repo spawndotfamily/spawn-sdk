@@ -2,11 +2,10 @@
 /**
  * Headless table-bankroll scenarios for the SDK loopback service.
  *
- * Run:  node testing/table-scenarios.mjs [--json]
- *
- * Consumers run the shipped copy instead (there is no `test:tables` script in your project):
+ * Run this from your own project:
  *   npx spawn-test [--json]
  *   node node_modules/@spawndotfamily/sdk/testing/table-scenarios.mjs [--json]
+ * Working inside the SDK repo itself: node testing/table-scenarios.mjs [--json]
  *
  * Every scenario asserts the platform invariant after each money step:
  *   buyIns = cashOuts + stacks + committed + pendingCashOuts
