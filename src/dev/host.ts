@@ -11,10 +11,15 @@ let receiptStatus: 'idle' | 'pending' | 'paid' | 'cancelled' | 'failed' = 'idle'
 let lastReceipt: unknown = null;
 let state = new LocalTestState(), dispose: (() => void) | undefined;
 let payment: { quote: LocalQuote; resolve: (value: unknown) => void; reject: (error: Error) => void } | null = null;
+// Compact, agent-readable summary. Keep this small: an agent may be paying per token.
+const agentData = () => player.value === 'guest'
+  ? { guest: true, saves: [], scores: state.scores.length }
+  : { guest: false, saves: state.listSaves(player.value).items.map(({ key, version }) => ({ key, version })), scores: state.scores.length };
 const devSnapshot = () => structuredClone({
   environment: 'local-test', connected: connectedState, player: state.identity(player.value),
   lastScore: state.scores[0] ?? null, receiptStatus, lastReceipt,
-  balances: { player: state.balance(player.value), pool: state.economy.balance('pool'), platform: state.economy.balance('platform') }
+  balances: { player: state.balance(player.value), pool: state.economy.balance('pool'), platform: state.economy.balance('platform') },
+  data: agentData()
 });
 Object.defineProperty(window, '__SPAWN_DEV_STATE__', { get: devSnapshot });
 const updateDiagnostics = () => { element('spawn-dev-state').textContent = JSON.stringify(devSnapshot()); };

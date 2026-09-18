@@ -220,6 +220,85 @@ await scenario('an expired hand deadline refunds unfinished contributions', asyn
   );
 });
 
+await scenario('six seats conserve exactly across many hands', async () => {
+  const service = createLoopbackTableService();
+  const tableId = randomUUID();
+  await service.client.create({ tableId, operationId: op(), maxSeats: 6 });
+  const players = [];
+  for (let index = 0; index < 6; index += 1) {
+    const playerId = randomUUID();
+    players.push({ playerId, seatId: await seatPlayer(service, tableId, playerId, String((index + 1) * 1000)) });
+  }
+  const roster = players.map(({ playerId, seatId }) => ({ playerId, seatId }));
+  for (let hand = 0; hand < 20; hand += 1) {
+    const handId = randomUUID();
+    const stake = String(100 + hand * 10);
+    await service.client.startHand(tableId, { operationId: op(), handId, players: roster });
+    await service.client.commitHand(tableId, {
+      operationId: op(),
+      handId,
+      expectedRevision: 0,
+      contributions: players.map(({ playerId }) => ({ playerId, amount: stake })),
+      folded: [],
+    });
+    const winner = players[hand % players.length];
+    await service.client.settleHand(tableId, {
+      operationId: op(),
+      handId,
+      expectedRevision: 1,
+      pots: [{ cap: stake, winners: [{ playerId: winner.playerId, amount: String(Number(stake) * players.length) }] }],
+    });
+    checkConservation(service);
+  }
+  const { totals } = service.conservation();
+  assert.equal(totals.committed, '0', 'no hand is left in flight');
+  assert.equal(BigInt(totals.stacks) + BigInt(totals.cashOuts), BigInt(totals.buyIns), 'every buy-in is accounted for');
+});
+
+await scenario('a seat can leave mid-session while the rest keep playing', async () => {
+  const service = createLoopbackTableService();
+  const tableId = randomUUID();
+  await service.client.create({ tableId, operationId: op(), maxSeats: 6 });
+  const players = [];
+  for (let index = 0; index < 4; index += 1) {
+    const playerId = randomUUID();
+    players.push({ playerId, seatId: await seatPlayer(service, tableId, playerId, '2000') });
+  }
+  const playHand = async (stake) => {
+    const handId = randomUUID();
+    await service.client.startHand(tableId, {
+      operationId: op(),
+      handId,
+      players: players.map(({ playerId, seatId }) => ({ playerId, seatId })),
+    });
+    await service.client.commitHand(tableId, {
+      operationId: op(),
+      handId,
+      expectedRevision: 0,
+      contributions: players.map(({ playerId }) => ({ playerId, amount: stake })),
+      folded: [],
+    });
+    await service.client.settleHand(tableId, {
+      operationId: op(),
+      handId,
+      expectedRevision: 1,
+      pots: [{ cap: stake, winners: [{ playerId: players[0].playerId, amount: String(Number(stake) * players.length) }] }],
+    });
+    checkConservation(service);
+  };
+  await playHand('200');
+  const leaver = players.shift();
+  const before = BigInt(service.conservation().totals.cashOuts);
+  await service.client.cashOut(tableId, { operationId: op(), playerId: leaver.playerId, seatId: leaver.seatId });
+  checkConservation(service);
+  assert.equal(BigInt(service.conservation().totals.cashOuts) > before, true, 'the leaver is paid exactly once');
+  await playHand('300');
+  await playHand('300');
+  const { totals } = service.conservation();
+  assert.equal(BigInt(totals.committed), 0n);
+  assert.equal(BigInt(totals.stacks) + BigInt(totals.cashOuts), BigInt(totals.buyIns), 'conservation holds after churn');
+});
+
 const failed = results.filter((result) => !result.ok);
 console.log('');
 console.log(`${results.length - failed.length}/${results.length} scenarios passed`);

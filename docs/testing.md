@@ -99,3 +99,11 @@ The creator test panel also controls leaderboard sharing, best/latest/every-run 
 After upload, open the private preview from Spawn: verify the connection toast appears at top-right, disappears after about 3.3 seconds, and Transactions stays at bottom-right. Verify reconnect notifications and payment confirmation still work. The launcher owns this UI; local test panels do not dictate the published layout. Remove any old game-drawn Spawn badge/toolbar rather than layering another over it. Do not remove your game controls or useful player-name display.
 
 Select **Guest** to verify free play with a unique guest ID. Scores, cloud saves and payments must fail without changing data or balances. Switch to Alice to test signed-in features. See [guest play](guests.md).
+
+## Agent-readable local state
+
+Testing should not require reading this folder end to end. `spawn-dev` exposes one compact JSON snapshot — read it instead of scraping the page:
+
+- `window.__SPAWN_DEV_STATE__` → `{ connected, player, balances, lastScore, receiptStatus, data: { guest, saves: [{ key, version }], scores } }`
+
+Table games: `npm run test:tables` runs the shipped money-flow harness (8 scenarios; every step asserts `buyIns = cashOuts + stacks + committed + pendingCashOuts`). See `testing/README.md` for the harness API and what it does not cover.

@@ -13,7 +13,7 @@ and get a pass/fail answer before publishing.
 | File | Purpose |
 | --- | --- |
 | `loopback-table-service.mjs` | A test double that speaks the platform's table contract on loopback, so the **real** SDK client and its validators drive it. |
-| `table-scenarios.mjs` | Six scripted scenarios — unequal all-ins/side pots, cash-outs, disconnect grace, reconnect, lost-response retry, abandoned-hand refund — each asserting the money invariant. |
+| `table-scenarios.mjs` | Eight scripted scenarios — unequal all-ins/side pots, cash-outs, disconnect grace, reconnect, lost-response retry, abandoned-hand refund, six seats across twenty hands, and mid-session seat churn — each asserting the money invariant. |
 
 Run it:
 

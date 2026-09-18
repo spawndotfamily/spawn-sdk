@@ -664,7 +664,7 @@ export function formatReleaseSummary(response: unknown, secret?: string, baseUrl
         : scanStatus === 'error'
           ? 'Retry the automated malware check; publish only after it passes.'
           : scanStatus === 'passed'
-            ? `Play this exact preview, then run spawn-publish release --release ${releaseId} --creator-confirmation.`
+            ? `Play this exact preview; if your game moves tokens, run its automated settlement tests first (docs/testing.md), then run spawn-publish release --release ${releaseId} --creator-confirmation.`
             : `Poll status until the automated malware check passes, then play this exact preview and run spawn-publish release --release ${releaseId} --creator-confirmation.`;
   const summary = {
     id: value.id,

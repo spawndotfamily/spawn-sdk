@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.9.2
+
+### Added
+
+- N-player table scenarios in `testing/table-scenarios.mjs`: a six-seat table conserving exactly across twenty hands, and seat churn (one player leaves mid-session, the rest keep playing). Eight scenarios total, all asserting the table conservation invariant.
+- `window.__SPAWN_DEV_STATE__.data` — a deliberately small agent-readable summary of local player state: `{ guest, saves: [{ key, version }], scores }`.
+- `spawn-publish status` now reminds you to run automated settlement tests before publishing a release that moves tokens.
+
+### Changed
+
+- `docs/testing.md` documents the compact state snapshot so an agent can verify outcomes without reading the documentation set (kept terse on purpose: agent context is a real cost).
+
+### Upgrade notes
+
+- No action required: no runtime API, wire format or server behaviour changed. The new state field is additive and only present in `spawn-dev`.
+
 ## 0.9.1
 
 ### Added
