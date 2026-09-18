@@ -1,6 +1,6 @@
 {
   "name": "@spawndotfamily/sdk",
-  "version": "0.9.5",
+  "version": "0.9.6",
   "type": "module",
   "description": "Browser game SDK, isolated local testing, and private-preview publishing tools for Spawn.",
   "license": "MIT",

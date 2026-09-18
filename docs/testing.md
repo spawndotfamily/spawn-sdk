@@ -114,7 +114,7 @@ that script exists only inside the SDK repo):
 
 ```sh
 npx spawn-test          # 10 scenarios, exits non-zero on any failure
-npx spawn-test --json   # { total, passed, failed, results } for an agent to assert on
+npx spawn-test --json   # { title, total, passed, failed, results } for an agent to assert on
 ```
 
 Every step asserts `buyIns = cashOuts + stacks + committed + pendingCashOuts`. Then port **your**

@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.9.6
+
+### Fixed
+
+- **The documented `--json` shape was wrong in `docs/testing.md`**: it listed `{ total, passed, failed, results }` and omitted `title`, which `testing/README.md` states correctly. An agent that asserts on a documented shape trips over a missing field, so both files now carry the same payload.
+
+### Added
+
+- `docs/testing.md` states the full payload inline (`{ title, total, passed, failed, results }`), so a reader does not have to open another file to learn the shape it prints.
+
+### Changed
+
+- The `--json` shape is written identically in `docs/testing.md` and `testing/README.md`; both are checked against the runner's actual output.
+
+### Upgrade notes
+
+- No action required: documentation only. No runtime API, wire format or server behaviour changed.
+
 ## 0.9.5
 
 Another creator-side report, and again all docs — plus one thing CI should have caught and now does.
