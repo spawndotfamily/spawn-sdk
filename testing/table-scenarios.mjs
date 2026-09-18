@@ -299,6 +299,39 @@ await scenario('a seat can leave mid-session while the rest keep playing', async
   assert.equal(BigInt(totals.stacks) + BigInt(totals.cashOuts), BigInt(totals.buyIns), 'conservation holds after churn');
 });
 
+await scenario('a stubbed method replaces one call while the rest stay real', async () => {
+  const service = createLoopbackTableService();
+  const tableId = randomUUID();
+  const playerId = randomUUID();
+  const otherId = randomUUID();
+  const stubbed = [];
+  const client = service.stubClient({
+    settleHand: async (tableId, input) => {
+      stubbed.push(input.handId);
+      throw new Error('settlement deliberately stubbed');
+    },
+  });
+  await client.create({ tableId, operationId: op(), maxSeats: 6 });
+  const seatId = await seatPlayer(service, tableId, playerId, '1000');
+  const otherSeatId = await seatPlayer(service, tableId, otherId, '1000');
+  const handId = randomUUID();
+  await client.startHand(tableId, {
+    operationId: op(), handId,
+    players: [{ playerId, seatId }, { playerId: otherId, seatId: otherSeatId }],
+  });
+  await client.commitHand(tableId, {
+    operationId: op(), handId, expectedRevision: 0,
+    contributions: [{ playerId, amount: '100' }, { playerId: otherId, amount: '100' }], folded: [],
+  });
+  await assert.rejects(
+    () => client.settleHand(tableId, { operationId: op(), handId, expectedRevision: 1, pots: [] }),
+    /deliberately stubbed/,
+  );
+  assert.deepEqual(stubbed, [handId], 'the stub saw the settlement');
+  assert.equal((await client.status(tableId)).tableId, tableId, 'the real client still answers');
+  checkConservation(service);
+});
+
 const failed = results.filter((result) => !result.ok);
 console.log('');
 console.log(`${results.length - failed.length}/${results.length} scenarios passed`);

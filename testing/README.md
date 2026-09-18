@@ -61,6 +61,20 @@ service.loseNextResponse('commitHand');  // exercise the uncertain-outcome path
 service.advance(30_000);      // move the clock to hit grace/deadline/lease paths
 ```
 
+## Stubbing one SDK call
+
+The SDK table client is frozen on purpose, so do not mutate it — wrap it:
+
+```js
+const client = service.stubClient({
+  settleHand: async () => { throw new Error('settlement offline'); },
+});
+// every other method still runs the real client and its validators
+```
+
+The harness is importable by package path (no relative-path or `require.resolve`
+tricks): `@spawndotfamily/sdk/testing/loopback-table-service.mjs`.
+
 ## What this does NOT cover (yet)
 
 - **The player approval overlay itself.** Confirming an amount in Spawn's real

@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.9.3
+
+### Fixed
+
+- **The testing harness is now reachable through the package export map.** `import { createLoopbackTableService } from '@spawndotfamily/sdk/testing/loopback-table-service.mjs'` — the import documented in `testing/README.md` — threw `ERR_PACKAGE_PATH_NOT_EXPORTED`, because `testing/` was in `files` but not in `exports`. `.mjs` consumers also could not `require.resolve` any subpath and had to build a relative path by hand. `exports` now maps `./testing/*` and `./package.json`.
+
+### Added
+
+- `service.stubClient({ method: fn })` (and the exported `stubClient(client, overrides)`) wraps one method of the frozen SDK table client. Tests no longer need a hand-written delegating `Proxy` to make a single call fail.
+- A ninth harness scenario covering the stub wrapper, and a resolution test that fails if a documented package subpath stops resolving.
+
+### Changed
+
+- `testing/README.md` states the harness's package subpath and the stub wrapper, so the documented import and the supported way to stub a call are both explicit.
+
+### Upgrade notes
+
+- No action required: no runtime API, wire format or server behaviour changed. If you worked around the missing export with a relative `require.resolve('.../dist/server.js')` path, switch to the package subpath above.
+
 ## 0.9.2
 
 ### Added

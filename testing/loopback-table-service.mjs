@@ -419,6 +419,10 @@ export function createLoopbackTableService({ now = Date.now, asset: assetOverrid
       if (state) sweep();
       return state ? clone(state) : null;
     },
+    /** Stub one SDK client method; everything else keeps delegating to the frozen real client. */
+    stubClient(overrides = {}) {
+      return stubClient(client, overrides);
+    },
     /** Independent conservation check for assertions. */
     conservation() {
       if (!state) throw new Error('No table created yet.');
@@ -427,4 +431,25 @@ export function createLoopbackTableService({ now = Date.now, asset: assetOverrid
       return { balanced, totals: clone(t), detail: `buyIns=${t.buyIns} cashOuts=${t.cashOuts} backing=${t.backing}` };
     },
   };
+}
+
+/**
+ * Wrap the SDK's frozen table client so a test can replace one method.
+ * The client is frozen deliberately, and an ES Proxy may not substitute a value for a
+ * frozen (non-configurable, non-writable) data property — so this proxies a plain copy.
+ * Every member is bound to the real client, so the real validators still run for
+ * everything you did not stub.
+ */
+export function stubClient(client, overrides = {}) {
+  const base = {};
+  for (const key of Reflect.ownKeys(client)) {
+    const value = Reflect.get(client, key);
+    base[key] = typeof value === 'function' ? value.bind(client) : value;
+  }
+  return new Proxy(base, {
+    get(target, property) {
+      if (Object.prototype.hasOwnProperty.call(overrides, property)) return overrides[property];
+      return Reflect.get(target, property);
+    },
+  });
 }
