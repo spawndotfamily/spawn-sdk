@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.9.1
+
+### Added
+
+- `testing/` automated money-flow harness for table games: a loopback table service that speaks the platform's table contract (`testing/loopback-table-service.mjs`) plus six scripted scenarios (`testing/table-scenarios.mjs`) covering unequal all-ins and side pots, cash-out, disconnect grace, reconnect, lost-response retry and abandoned-hand refund. Run with `npm run test:tables`.
+- `createLoopbackTableService` test affordances: `confirmBuyIn(playerId)` simulates the Spawn overlay approval, `state(playerId)` exposes agent-readable quotes/seats/stacks/totals, `loseNextResponse(action)` forces the uncertain-outcome path, `advance(ms)` moves the clock onto grace/deadline/lease boundaries, and `conservation()` returns a verdict.
+- `testing/README.md` and a "Test before launch" section in `docs/table-bankroll.md`.
+
+### Changed
+
+- The published package now includes `testing/`.
+
+### Upgrade notes
+
+- No action required: no runtime API, wire format or server behaviour changed. To use the new harness, run `npm run test:tables` (or `node testing/table-scenarios.mjs`) in your game before publishing a table game.
+
 ## 0.9.0
 
 ### Added
