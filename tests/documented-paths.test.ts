@@ -87,9 +87,13 @@ void test('every documented package path exists in a directory we publish', () =
   const problems = references.filePaths.flatMap((relative) => {
     const withPrefix = `node_modules/${relative}`;
     const insidePackage = relative.split('/').slice(2).join('/');
-    if (!existsSync(insidePackage)) return [`${withPrefix} — not present in the repo`];
     const topLevel = insidePackage.split('/')[0];
-    return published.has(topLevel) ? [] : [`${withPrefix} — top level '${topLevel}' is not in package.json files`];
+    // The packaging contract (top level listed in `files`) is build-independent and always
+    // enforced. Presence can only be asserted once a build has run — CI tests before it builds.
+    if (!published.has(topLevel)) return [`${withPrefix} — top level '${topLevel}' is not in package.json files`];
+    const assertable = topLevel !== 'dist' || existsSync('dist');
+    if (assertable && !existsSync(insidePackage)) return [`${withPrefix} — not present in the repo`];
+    return [];
   });
   assert.deepEqual(problems, [], `documented paths that consumers could not use:\n${problems.join('\n')}`);
 });
