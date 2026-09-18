@@ -37,6 +37,7 @@
     "docs/multiplayer.md",
     "docs/match-payments.md",
     "examples",
+    "testing",
     "CHANGELOG.md",
     "docs/creator-checklist.md",
     "docs/startup.md",
@@ -56,6 +57,7 @@
   "scripts": {
     "build": "tsc",
     "test": "node --experimental-strip-types --test tests/*.test.ts",
+    "test:tables": "node testing/table-scenarios.mjs",
     "check": "tsc --noEmit",
     "postbuild": "node -e \"for(const p of ['dist/cli/run.js','dist/dev/run.js']) require('node:fs').chmodSync(p, 0o755)\"",
     "spawn-publish": "node --experimental-strip-types src/cli/run.ts"

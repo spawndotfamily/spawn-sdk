@@ -135,3 +135,17 @@ A table lease lasts 90 seconds, a disconnect grace period lasts 30 seconds and t
 Your server must call `tables.heartbeat(tableId)` about every 30 seconds while it operates the table; browser `watch` renews only the player's connection, not this server lease. Stop accepting new hands during uncertain recovery. New arrivals may buy in during a hand but are absent from its fixed roster and join a later hand; a participating player's top-up must wait until between hands. Leaving participants remain in the current hand and receive their resulting remaining stack after settlement, or the documented refund if that hand cannot finish.
 
 Server fairness remains the creator's responsibility. Spawn can enforce conserved funds, roster/seat scope, consent and durable idempotency, but it cannot determine whether a poker hand, wager, random seed or claimed result was honest. Keep the game authority on the creator server and never pay a browser-reported win.
+
+## Test before launch
+
+Do not ship a table game on a green build alone — shipment should require that you have *run* the money paths. `testing/` in this package contains a loopback table service plus scripted scenarios (unequal all-ins and side pots, cash-outs, disconnect grace, reconnect, lost-response retry, abandoned-hand refund). They drive this package's real client and validators headlessly, and every step asserts:
+
+```
+buyIns = cashOuts + stacks + committed + pendingCashOuts
+```
+
+```sh
+node testing/table-scenarios.mjs    # exits non-zero on any failure
+```
+
+Add your own scenario for your outcome rules (who wins, when a hand voids, what a tie does) — the shipped scenarios check accounting, not your game's fairness. Limitations are listed in `testing/README.md`: the player approval overlay and N-player concurrency are not covered by this harness, so one real two-account preview match is still required before publishing.
