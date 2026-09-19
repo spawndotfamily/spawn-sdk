@@ -5,9 +5,12 @@
 // added because a creator-side agent could not verify the declarations in its own
 // sandbox — CI should be the witness, not a report.
 import { createLoopbackTableService, stubClient } from '@spawndotfamily/sdk/testing/loopback-table-service.mjs';
+import { runFleet } from '@spawndotfamily/sdk/testing/table-fleet.mjs';
 import { runScenarios, checkConservation, executeScenario, summarize, wantsJson } from '@spawndotfamily/sdk/testing/scenario-runner.mjs';
 
 const service = createLoopbackTableService({ now: () => Date.now() });
+const funded = createLoopbackTableService({ balances: { 'player-1': '1000', 'player-2': 500 } });
+const trackedBalance: string | null = funded.balance('player-1');
 
 // Amounts are base-unit strings; the snapshot and conservation shapes are typed.
 const buyIns: string = service.state('player-1').totals.buyIns;
@@ -30,6 +33,12 @@ const summary = await runScenarios(
 const one: { name: string; ok: boolean; error?: string } = await executeScenario('x', () => {});
 const printed: { total: number; passed: number; failed: number } = summarize([one], { json: true });
 
+// the fleet driver is typed too: options in, per-table + aggregate report out
+const fleet = await runFleet({ players: 18, maxSeats: 6 });
+const fleetBalanced: boolean = fleet.balanced && fleet.aggregate.balanced;
+const fleetRefusals: number = fleet.refusals.insufficientBalance + fleet.refusals.zeroBalance;
+const fleetTableBuyIns: string = fleet.perTable[0]!.totals.buyIns;
+
 void buyIns;
 void pendingQuote;
 void advanced;
@@ -38,3 +47,7 @@ void wrapped;
 void fromService;
 void summary.results;
 void printed.failed;
+void trackedBalance;
+void fleetBalanced;
+void fleetRefusals;
+void fleetTableBuyIns;

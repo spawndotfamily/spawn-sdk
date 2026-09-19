@@ -13,7 +13,8 @@ and get a pass/fail answer before publishing.
 | File | Purpose |
 | --- | --- |
 | `loopback-table-service.mjs` | A test double that speaks the platform's table contract on loopback, so the **real** SDK client and its validators drive it. |
-| `table-scenarios.mjs` | Ten scripted scenarios — unequal all-ins/side pots, cash-outs, disconnect grace, reconnect, lost-response retry, abandoned-hand refund, six seats across twenty hands, mid-session seat churn, a stubbed client method, and an injected clock — each asserting the money invariant. Shipped as the `spawn-test` command. |
+| `table-scenarios.mjs` | Eleven scripted scenarios — unequal all-ins/side pots, cash-outs, disconnect grace, reconnect, lost-response retry, abandoned-hand refund, six seats across twenty hands, mid-session seat churn, a stubbed client method, an injected clock, and a small fleet guard — each asserting the money invariant. Shipped as the `spawn-test` command. |
+| `table-fleet.mjs` | A fleet driver: N simulated players across M tables (one service per table, up to six seats each), every phase run headlessly, conservation asserted per table and in aggregate, refused approvals counted. Library `runFleet()` plus a CLI. |
 
 Run it (from your own project — the paths below are consumer paths):
 
@@ -69,7 +70,7 @@ Run the SDK's own scenarios against your install (your project has no `test:tabl
 is the consumer command):
 
 ```bash
-npx spawn-test            # 10 scenarios, exits non-zero on failure
+npx spawn-test            # 11 scenarios, exits non-zero on failure
 npx spawn-test --json     # { title, total, passed, failed, results } for agents
 # same thing without npx: node node_modules/@spawndotfamily/sdk/testing/table-scenarios.mjs
 ```
@@ -96,6 +97,7 @@ advancing time does not move them, it makes them *expired*.
 | --- | --- |
 | `client` | The **real** SDK table client wired to the loopback service — call the same methods your game calls. |
 | `state(playerId?)` | Snapshot: `tableId, projectId, status, asset, settingsVersion, maxSeats, revision, leaseExpiresAt, maxEndsAt, seats[], hand, totals`, plus `quotes[]` and `pendingQuote`. |
+| `balance(playerId)` | The opt-in tracked test balance for that player, or `null` when untracked — debited on approval, credited on cash-out (see "Testing at scale (fleet driver)"). |
 | `conservation()` | `{ balanced, totals, delta, detail }` — `detail` states the imbalance, so a failure message tells you the delta instead of just "not equal". |
 | `confirmBuyIn(playerId)` | Simulates that player's Approve click in the Spawn overlay — call it per player to run a whole multiplayer flow headlessly (see "Simulating approvals for N players"). |
 | `reconnect(playerId)` | Clears the disconnect deadline, as a returning player would. |
@@ -136,6 +138,51 @@ simulated approvals prove your game's logic and the money accounting against the
 contract; they cannot prove the platform's own overlay. That is why one two-account preview match
 stays a human step before publishing a table game.
 
+### Testing at scale (fleet driver)
+
+One table proves the accounting; a hundred players prove the flow. `table-fleet.mjs` drives a fleet
+of simulated players across as many tables as you want — each table its own
+`createLoopbackTableService()`, up to six seats each — through every phase headlessly:
+
+```
+seat -> approve -> play hands -> cash out some players -> disconnect/reconnect -> settle all
+```
+
+```sh
+node testing/table-fleet.mjs --players 100          # exits non-zero on any imbalance
+node testing/table-fleet.mjs --players 100 --json   # machine-readable report (per-table + aggregate)
+node testing/table-fleet.mjs --help                 # seats, hands, buy-in, stake, table count
+# in your own project: node node_modules/@spawndotfamily/sdk/testing/table-fleet.mjs --players 100
+```
+
+```js
+import { runFleet } from '@spawndotfamily/sdk/testing/table-fleet.mjs';
+
+const report = await runFleet({ players: 100 });   // 100 players across 17 tables
+report.aggregate.balanced;                          // per-table AND aggregate invariant
+report.refusals;                                    // { insufficientBalance, zeroBalance, total }
+```
+
+A 100-player run is a few hundred in-process SDK calls and finishes in well under a second.
+
+**Fake accounts need fake balances — and the refusal must be real.** A real approval fails when
+the player cannot cover the quote, so the harness models it: pass per-player test balances and the
+approval click refuses an unfunded player exactly there, leaving the quote pending and the wallet
+untouched.
+
+```js
+const service = createLoopbackTableService({ balances: { [alice]: '1000', [bob]: '0' } });
+// alice approves a 1000 buy-in (wallet lands on 0); bob's approval throws:
+// "Insufficient balance for this buy-in: the player holds 0 base units, the quote needs 1000."
+service.balance(alice);   // '1000' before approval, '0' after, credited again on cash-out
+```
+
+Tracked wallets are debited on approval and credited on cash-out; a player not listed in `balances`
+is untracked, and without the option nothing is checked or tracked — existing scenarios behave
+exactly as before. The fleet funds every seat, gives the first seat of each table exactly the
+buy-in (the inclusive boundary of the check), drives one under-funded and one zero-balance approval
+per table, and counts both refusals in the report.
+
 ### Adding your own outcome rules
 
 Port your game's rules (who wins, rake, blinds, ties, voids) through the shipped runner so your
@@ -174,10 +221,10 @@ tricks): `@spawndotfamily/sdk/testing/loopback-table-service.mjs`.
   money accounting; the platform's own overlay UI and a *real* member account's server-side
   authorization are what it cannot stand in for, so one real two-account preview match remains a
   human step.
-- **True concurrency.** The N-player scenarios (six seats across twenty hands, seat churn) run
-  sequentially in one process. A driver running N virtual players *concurrently* over the real
-  browser bridge and multiplayer transport is not shipped — it only matters if you run your own
-  game server.
+- **True concurrency.** The fleet driver and the N-player scenarios run their players sequentially
+  in one process against the loopback double. A driver running N virtual players *concurrently*
+  over the real browser bridge and multiplayer transport is not shipped — it only matters if you
+  run your own game server.
 - **`spawn-dev` table state.** The single-player dev state hook does not yet
   expose tables; today `service.state()` is the agent-readable surface.
 - **A rake or fee out of the pot.** The contract conserves every committed base unit to the

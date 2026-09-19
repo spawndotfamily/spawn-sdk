@@ -15,6 +15,7 @@
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { createLoopbackTableService, TABLE_POLICY } from './loopback-table-service.mjs';
+import { runFleet } from './table-fleet.mjs';
 import { checkConservation, executeScenario, summarize, wantsJson } from './scenario-runner.mjs';
 
 const json = wantsJson();
@@ -348,6 +349,22 @@ await scenario('an injected clock drives the service instead of freezing at cons
     'the service must follow an injected now(): otherwise game time and service time drift',
   );
   checkConservation(service);
+});
+
+await scenario('a small fleet conserves across three tables and refuses unfunded approvals', async () => {
+  // Guards the fleet driver (testing/table-fleet.mjs) in CI: 3 tables x 6 players, every phase,
+  // per-table and aggregate conservation, and the opt-in balance refusal counted per table.
+  const report = await runFleet({ players: 18, maxSeats: 6 });
+  assert.equal(report.tables, 3, '18 players at 6 seats form three tables');
+  assert.equal(report.seated, 18, 'every player is seated');
+  assert.equal(report.balanced, true);
+  assert.equal(report.aggregate.balanced, true);
+  assert.equal(report.aggregate.cashOuts, report.aggregate.buyIns, 'every buy-in is returned exactly once');
+  assert.equal(report.aggregate.backing, '0', 'nothing stays in a table');
+  assert.equal(report.refusals.insufficientBalance, 3, 'one under-funded approval per table is refused');
+  assert.equal(report.refusals.zeroBalance, 3, 'one zero-balance approval per table is refused');
+  assert.equal(report.perTable.every((table) => table.balanced), true, 'every table conserves on its own');
+  assert.equal(report.wallets.balanced, true, 'the tracked test wallets gain and lose nothing');
 });
 
 const summary = summarize(results, { json });

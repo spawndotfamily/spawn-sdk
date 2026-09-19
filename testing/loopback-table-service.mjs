@@ -12,7 +12,12 @@
  * It enforces the documented invariants, and throws if a scenario breaks one:
  *
  *   buyIns = cashOuts + stacks + committed + pendingCashOuts
-
+ *
+ * Opt-in per-player test balances (`{ balances: { [playerId]: '1000' } }`) make the approval
+ * click refuse a player who cannot cover the quote — the refusal a real unfunded account gets —
+ * and debit/credit the tracked wallet on approval/cash-out. Omit the option and none of that
+ * exists: no wallet is tracked, nothing is checked, nothing is debited.
+ *
  * It is a test double, not a rules engine: your authoritative server still
  * decides who wins. Outcomes here are whatever your scenario supplies.
  */
@@ -30,8 +35,17 @@ export const TABLE_POLICY = {
 
 const sum = (values) => values.reduce((total, value) => total + BigInt(value), 0n).toString();
 const clone = (value) => structuredClone(value);
+const UINT256_MAX = (2n ** 256n) - 1n;
 
-export function createLoopbackTableService({ now = Date.now, asset: assetOverride } = {}) {
+/** Canonical base-unit string for a test balance: `'1000'` or `1000`, never a decimal. */
+function canonicalBalance(value, playerId) {
+  const canonical = typeof value === 'number' && Number.isSafeInteger(value) && value >= 0 ? String(value) : value;
+  if (typeof canonical !== 'string' || !/^(?:0|[1-9][0-9]{0,77})$/.test(canonical) || BigInt(canonical) > UINT256_MAX)
+    throw new Error(`Test balance for ${playerId} must be an unsigned integer in token base units.`);
+  return canonical;
+}
+
+export function createLoopbackTableService({ now = Date.now, asset: assetOverride, balances: balanceOverrides } = {}) {
   const projectId = randomUUID();
   const address = `0x${'1'.repeat(40)}`;
   const asset = assetOverride ?? {
@@ -45,6 +59,14 @@ export function createLoopbackTableService({ now = Date.now, asset: assetOverrid
     source: 'spawn',
     enabled: true,
   };
+
+  // Opt-in per-player test balances. `null` when the option is absent, and every use below is
+  // guarded — so without the option the service behaves exactly as it did before it existed.
+  if (balanceOverrides !== undefined && (balanceOverrides === null || typeof balanceOverrides !== 'object' || Array.isArray(balanceOverrides)))
+    throw new Error('balances must be an object mapping a playerId to an unsigned integer in token base units.');
+  const wallets = balanceOverrides === undefined
+    ? null
+    : new Map(Object.entries(balanceOverrides).map(([playerId, amount]) => [playerId, canonicalBalance(amount, playerId)]));
 
   // The clock is read LIVE, per call, so a caller that injects its own test clock
   // (`now: () => myGameClock`) follows that clock instead of freezing at construction;
@@ -98,9 +120,11 @@ export function createLoopbackTableService({ now = Date.now, asset: assetOverrid
   }
 
   function cashOutSeat(seat) {
-    state.totals.cashOuts = (
-      BigInt(state.totals.cashOuts) + BigInt(seat.stack) + BigInt(seat.pendingCashOut)
-    ).toString();
+    const paid = (BigInt(seat.stack) + BigInt(seat.pendingCashOut)).toString();
+    state.totals.cashOuts = (BigInt(state.totals.cashOuts) + BigInt(paid)).toString();
+    // A tracked test wallet is credited exactly what the seat is paid, once.
+    if (wallets?.has(seat.playerId))
+      wallets.set(seat.playerId, (BigInt(wallets.get(seat.playerId)) + BigInt(paid)).toString());
     seat.stack = '0';
     seat.pendingCashOut = '0';
     state.seats = state.seats.filter((candidate) => candidate !== seat);
@@ -378,6 +402,11 @@ export function createLoopbackTableService({ now = Date.now, asset: assetOverrid
         : undefined;
       return { ...snapshotValue, quotes: [...quotes.values()].map(clone), pendingQuote: quote ? clone(quote) : null };
     },
+    /**
+     * The tracked test balance for `playerId` — `null` when no `balances` option was supplied or
+     * that player is not listed in it. Debits on approval, credits on cash-out.
+     */
+    balance: (playerId) => (wallets?.has(playerId) ? wallets.get(playerId) : null),
     /** Simulate the player approving their own buy-in in the Spawn overlay. */
     confirmBuyIn(playerId) {
       const quote = [...quotes.values()].findLast(
@@ -386,6 +415,17 @@ export function createLoopbackTableService({ now = Date.now, asset: assetOverrid
       if (!quote) throw fail('No pending quote for that player.', 404);
       if (quote.expiresAt < timestamp()) throw fail('Quote has expired.');
       if (state.status !== 'open') throw fail('Table is not open.');
+      // With opt-in test balances, an approval the player cannot fund is refused where the real
+      // overlay refuses it — at the click — and the quote stays pending. No debit happens.
+      if (wallets?.has(playerId) && BigInt(wallets.get(playerId)) < BigInt(quote.amount))
+        throw Object.assign(
+          fail(
+            `Insufficient balance for this buy-in: the player holds ${wallets.get(playerId)} base units, the quote needs ${quote.amount}.`,
+          ),
+          { code: 'INSUFFICIENT_BALANCE' },
+        );
+      if (wallets?.has(playerId))
+        wallets.set(playerId, (BigInt(wallets.get(playerId)) - BigInt(quote.amount)).toString());
       quote.status = 'confirmed';
       const existing = seats().find((seat) => seat.playerId === playerId);
       if (existing) existing.stack = (BigInt(existing.stack) + BigInt(quote.amount)).toString();

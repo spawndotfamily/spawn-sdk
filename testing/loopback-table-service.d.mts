@@ -91,6 +91,13 @@ export interface LoopbackTableServiceOptions {
   now?: number | (() => number);
   /** Fake asset handed to the client; defaults to `LOCAL` on chain 46630 with 2 decimals. */
   asset?: LoopbackAsset;
+  /**
+   * Opt-in per-player test balances in base units. A listed player's approval is refused
+   * (`Insufficient balance for this buy-in`, `code: 'INSUFFICIENT_BALANCE'`) when the quote
+   * exceeds the balance, and the tracked wallet is debited on approval and credited on
+   * cash-out. Players not listed are untracked; omit the option and nothing is tracked.
+   */
+  balances?: Record<string, string | number>;
 }
 
 export interface LoopbackTableService {
@@ -101,6 +108,11 @@ export interface LoopbackTableService {
   /** Every call the service received, in order. */
   readonly calls: ClientCall[];
   state(playerId?: string): AgentState;
+  /**
+   * Tracked test balance for `playerId`, or `null` when no `balances` option was supplied or
+   * that player is not listed in it.
+   */
+  balance(playerId: string): string | null;
   /** Acts as the player approving their own quote in the Spawn overlay. */
   confirmBuyIn(playerId: string): unknown;
   /** Clears the disconnect deadline, as a returning player would. */

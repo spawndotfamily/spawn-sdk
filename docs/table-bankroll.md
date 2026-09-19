@@ -145,10 +145,10 @@ buyIns = cashOuts + stacks + committed + pendingCashOuts
 ```
 
 ```sh
-npx spawn-test    # 10 scenarios, exits non-zero on any failure
+npx spawn-test    # 11 scenarios, exits non-zero on any failure
 ```
 
-Add your own scenario for your outcome rules (who wins, when a hand voids, what a tie does) — the shipped scenarios check accounting, not your game's fairness; `@spawndotfamily/sdk/testing/scenario-runner.mjs` runs them through the same runner, and `examples/table-scenarios-custom.mjs` is a worked example. Limitations are listed in `testing/README.md`: the player approval overlay and N-player concurrency are not covered by this harness, so one real two-account preview match is still required before publishing.
+Add your own scenario for your outcome rules (who wins, when a hand voids, what a tie does) — the shipped scenarios check accounting, not your game's fairness; `@spawndotfamily/sdk/testing/scenario-runner.mjs` runs them through the same runner, and `examples/table-scenarios-custom.mjs` is a worked example. For scale, `testing/table-fleet.mjs` seats a fleet of players across many tables and asserts conservation per table and in aggregate (`node node_modules/@spawndotfamily/sdk/testing/table-fleet.mjs --players 100`); with the harness's opt-in test balances, an approval a player cannot fund is refused at the click, exactly as the real overlay refuses it. Limitations are listed in `testing/README.md`: the harness simulates the approval decision and the money at any scale, but it cannot stand in for Spawn's real overlay UI or a real member account's authorization, so one real two-account preview match is still required before publishing.
 
 **Economy note — no fee can come out of a pot.** Committed table funds belong to the players who contributed them: settling a pot short of what was committed is refused (`Pot amounts do not conserve`), and a non-contributing participant cannot be paid (`Winner is not eligible for this pot`). Design your economy so any creator or house fee is charged outside the table, not skimmed from settlements.
 
