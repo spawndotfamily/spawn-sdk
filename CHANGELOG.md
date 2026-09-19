@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.9.7
+
+### Added
+
+- **Simulating approvals for N players is now documented as a first-class path**, not a footnote. `service.confirmBuyIn(playerId)` simulates one player's Approve click, so call it per player and a whole multiplayer money flow runs headlessly with no real accounts and no second person. New `examples/table-multiplayer-sim.mjs` is a worked three-player flow: unequal buy-ins, a short all-in, a main pot plus side pot, a cash-out, and the money invariant asserted after every step.
+- `docs/table-bankroll.md` states the rule explicitly: **the token comes from the Listing in the game workspace, never from the SDK or game code** — do not hardcode a token or contract address. Pass the listing token's symbol/decimals to the harness only so local test maths match it.
+
+### Changed
+
+- The coverage note no longer says the approval overlay "cannot be simulated", which was misleading: the *approval decision* is simulatable for any number of players; what cannot be stood in for is Spawn's own overlay UI and a real member account's server-side authorization. The `confirmBuyIn` reference entry and the coverage list now say exactly that.
+
+### Upgrade notes
+
+- No action required: documentation and an example. No runtime API, wire format or server behaviour changed, and the token still comes from the project's Listing exactly as before.
+
 ## 0.9.6
 
 ### Fixed

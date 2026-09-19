@@ -97,13 +97,44 @@ advancing time does not move them, it makes them *expired*.
 | `client` | The **real** SDK table client wired to the loopback service — call the same methods your game calls. |
 | `state(playerId?)` | Snapshot: `tableId, projectId, status, asset, settingsVersion, maxSeats, revision, leaseExpiresAt, maxEndsAt, seats[], hand, totals`, plus `quotes[]` and `pendingQuote`. |
 | `conservation()` | `{ balanced, totals, delta, detail }` — `detail` states the imbalance, so a failure message tells you the delta instead of just "not equal". |
-| `confirmBuyIn(playerId)` | Acts as the player approving their own quote in the Spawn overlay (the step you cannot automate in production). |
+| `confirmBuyIn(playerId)` | Simulates that player's Approve click in the Spawn overlay — call it per player to run a whole multiplayer flow headlessly (see "Simulating approvals for N players"). |
 | `reconnect(playerId)` | Clears the disconnect deadline, as a returning player would. |
 | `loseNextResponse(action)` | The next call to `action` **applies and records** the mutation, then throws. Retrying with the same `operationId` replays the recorded result instead of applying twice — that is how you prove idempotency, not just an error path. |
 | `advance(ms)` | Move time forward, then run the recovery sweep (quote expiry, disconnect grace, lease expiry, hand deadline). |
 | `stubClient(overrides)` | Replace one client method; the rest keep delegating to the real frozen client. Own-property lookup per call, so mutating `overrides` mid-test applies. |
 | `asset`, `projectId`, `calls` | The fake asset, the project id, and every call the service received. |
 | `TABLE_POLICY` | `quoteMs` 120s, `leaseMs` 90s, `disconnectGraceMs` 30s, `handDeadlineMs` 300s, `maxAgeMs` 24h. |
+
+### Simulating approvals for N players
+
+You do not need real accounts (or a second person) to test a multiplayer money flow. Each player's
+Approve click is simulated by calling `confirmBuyIn(playerId)` for that player — do it for as many
+players as your game seats, and the whole flow runs headlessly:
+
+```js
+// Three players, each approving their own buy-in, exactly as the overlay would.
+for (const { playerId, amount } of [
+  { playerId: alice, amount: '10000' },
+  { playerId: bob, amount: '4000' },
+  { playerId: carol, amount: '2500' },
+]) {
+  const buyInId = randomUUID();
+  await service.client.requestBuyIn(tableId, {
+    operationId: randomUUID(), buyInId, player: { playerId, launchId: randomUUID() }, amount,
+  });
+  service.confirmBuyIn(playerId);   // the Approve click
+}
+// then play hands, cash out, disconnect players — assert conservation after every step
+```
+
+A full worked version (unequal stacks, a side pot, a cash-out) is in
+`examples/table-multiplayer-sim.mjs`, and the shipped six-seat scenario uses the same loop.
+
+**What this still cannot simulate**, and why one real check remains: the overlay itself is Spawn's
+UI, and a *real* approval is authorized server-side against a real signed-in member account. So the
+simulated approvals prove your game's logic and the money accounting against the platform's real
+contract; they cannot prove the platform's own overlay. That is why one two-account preview match
+stays a human step before publishing a table game.
 
 ### Adding your own outcome rules
 
@@ -136,11 +167,13 @@ const client = service.stubClient({
 The harness is importable by package path (no relative-path or `require.resolve`
 tricks): `@spawndotfamily/sdk/testing/loopback-table-service.mjs`.
 
-## What this does NOT cover (yet)
+### What this does NOT cover (yet)
 
-- **The player approval overlay itself.** Confirming an amount in Spawn's real
-  overlay needs real member accounts; `confirmBuyIn()` simulates that step, so the
-  *final* pre-publish check on a real preview is still a human action.
+- **The real approval overlay and a real account's authorization.** `confirmBuyIn(playerId)`
+  simulates the Approve click for any number of players, which covers your game's logic and the
+  money accounting; the platform's own overlay UI and a *real* member account's server-side
+  authorization are what it cannot stand in for, so one real two-account preview match remains a
+  human step.
 - **True concurrency.** The N-player scenarios (six seats across twenty hands, seat churn) run
   sequentially in one process. A driver running N virtual players *concurrently* over the real
   browser bridge and multiplayer transport is not shipped — it only matters if you run your own
