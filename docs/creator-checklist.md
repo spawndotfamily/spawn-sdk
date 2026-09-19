@@ -93,6 +93,10 @@ SDK 0.7.0 includes [self-service server setup](server-setup.md). Fresh `server:c
 
 Read [token balances](token-balances.md). Browser reads are self-only; the creator server reads verified active game members and applies visibility before sending. Verify exact units, no fake-zero fallback, expired/guest/cross-game rejection, and no new money operation from a read. Install/deploy browser and server changes separately.
 
+## Reward and redemption payouts
+
+For server-decided rewards and deposit redemptions from the game's pool, read [payouts](payouts.md) before implementation. Use the server-only `createSpawnPayoutClient` with the existing dedicated `match.key`; there is no browser payout method, and a browser origin is refused. Journal the exact payout intent (including its `operationId`) before the network call, reconcile an uncertain result by reading `operation(operationId)` with the same ID, and never issue a new ID to resolve uncertainty. Amounts are base-unit integer strings. A payout against a `depositId` is capped by that paid deposit and pays only its own member. Test the whole deposit → claim → redemption loop headlessly with `@spawndotfamily/sdk/testing/loopback-payout-service.mjs` — replay pays once, overdrafts and non-members are refused, and conservation holds — then confirm one real redemption on a private preview before claiming completion. Never pay a browser-reported win.
+
 ## Persistent tables
 
 For SDK 0.9.0 tables, read [table bankroll](table-bankroll.md) before implementation. Use the existing dedicated `match.key` on the creator's authoritative server and `client.tables` in the browser. Persist every exact table mutation intent before its network call, preserve unresolved records after timeouts or 404s, and reconcile the original IDs before any permitted same-ID replay. Test confirmed buy-in approval, side-pot conservation, seat-generation fencing, hand recovery, reconnect and cash-out recovery with two signed-in members. The matching Spawn 0.9 table service must be deployed separately; a browser upload does not provide persistence or authority.

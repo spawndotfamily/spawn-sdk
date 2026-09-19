@@ -23,14 +23,14 @@ Run these private-file setup commands on Linux, macOS, or WSL's Linux filesystem
 
 | File | Purpose |
 | --- | --- |
-| `match.key` | Dedicated raw match and game-scoped table credential; read privately on the creator's server and pass to `createSpawnMatchClient`, `createSpawnTableClient` or the matching server adapter. Never put it in the browser. |
+| `match.key` | Dedicated raw match, game-scoped table and payout credential; read privately on the creator's server and pass to `createSpawnMatchClient`, `createSpawnTableClient`, `createSpawnPayoutClient` or the matching server adapter. Never put it in the browser. |
 | `storage.key` | Separate storage credential, created only for a previously unregistered game. Existing storage credentials are preserved. Keep this file if using the documented Spawn save API. |
 | `verification.json` | Public Ed25519 verification configuration for `createSpawnLaunchVerifier`: issuer, audience, game ID, environment and public keys. |
 | `setup.json` | Public settings and version binding used to reconcile retries. Preserve with the private files. |
 
-On the creator's authorized server, install the match key and public verification config, configure a durable match/table journal, deploy the authoritative game code and restart that game server. Adapt these files to the game's own configuration variable names. Follow [multiplayer](multiplayer.md), [match payments](match-payments.md) and [persistent tables](table-bankroll.md). Never request Spawn infrastructure access. An agent with permission to deploy the creator's server can complete this step; otherwise give that server's operator the artifact and private file locations, never secret values in chat.
+On the creator's authorized server, install the match key and public verification config, configure a durable match/table/payout journal, deploy the authoritative game code and restart that game server. Adapt these files to the game's own configuration variable names. Follow [multiplayer](multiplayer.md), [match payments](match-payments.md), [persistent tables](table-bankroll.md) and [payouts](payouts.md). Never request Spawn infrastructure access. An agent with permission to deploy the creator's server can complete this step; otherwise give that server's operator the artifact and private file locations, never secret values in chat.
 
-The existing `match.key` authorizes both the match routes and the game-scoped table routes. `matchesEnabled` remains the backward-compatible setup/status metadata for this combined server authority; the platform does not return a separate `tablesEnabled` field. Enabling server authority through this ordinary creator flow does not move player funds or activate a new VPS.
+The existing `match.key` authorizes the match routes, the game-scoped table routes and the pool payout route. `matchesEnabled` remains the backward-compatible setup/status metadata for this combined server authority; the platform does not return a separate `tablesEnabled` or `payoutsEnabled` field. Enabling server authority through this ordinary creator flow does not move player funds or activate a new VPS.
 
 ## Retry, rotate and revoke
 
@@ -42,12 +42,12 @@ To rotate the match key, obtain the current version and run enable using a **new
 spawn-publish server disable --version 1 --creator-confirmation --credentials /private/path/creator.json
 ```
 
-Use the actual current version. Disable revokes match and table authority immediately, while preserving transport and storage. Existing reserved entries and table backing remain subject to Spawn's cancellation/refund and cash-out recovery rules; disabling is not instant confirmation. Deleting a local file alone does not revoke its platform registration. Rotating/revoking a publishing credential is separate from rotating/revoking a match/table credential.
+Use the actual current version. Disable revokes match, table and payout authority immediately, while preserving transport and storage. Existing reserved entries and table backing remain subject to Spawn's cancellation/refund and cash-out recovery rules; disabling is not instant confirmation. Deleting a local file alone does not revoke its platform registration. Rotating/revoking a publishing credential is separate from rotating/revoking a match/table credential.
 
 ## Permissions and verification
 
 - A downloaded creator credential may configure only its owner's game, in addition to its documented publishing/listing/database scopes. It grants no SSH access, OS commands, arbitrary filesystem access, platform administration or other-game access.
-- A stolen creator credential can still damage that game's settings or content. Keep it private and revoke it if exposed. A stolen match key can influence that game's approved match outcomes and scoped table operations; it cannot authorize arbitrary player debits. Do not claim credentials are harmless or security is guaranteed.
+- A stolen creator credential can still damage that game's settings or content. Keep it private and revoke it if exposed. A stolen match key can influence that game's approved match outcomes, scoped table operations and pool payouts; it cannot authorize arbitrary player debits. Do not claim credentials are harmless or security is guaranteed.
 - Match/table setup moves no player tokens. Players must independently confirm the exact stakes in Spawn. Match settlement is restricted to the approved reserved pot and its two authenticated roster members; table buy-ins are separately approved and table backing is isolated per table. Guests cannot send or receive tokens.
 - Creator-server fairness remains the creator's responsibility. Platform checks conserve the pot and enforce scope/consent; they cannot establish whether a game result was honest.
 - Direct player gifts and atomic token trades use [trades](trades.md), with player approval and no match key. On-chain withdrawal is a separate wallet action.

@@ -11,6 +11,10 @@ void test('the packaged testing harness resolves through the package export map'
     /testing\/loopback-table-service\.mjs$/,
   );
   assert.match(
+    import.meta.resolve('@spawndotfamily/sdk/testing/loopback-payout-service.mjs'),
+    /testing\/loopback-payout-service\.mjs$/,
+  );
+  assert.match(
     import.meta.resolve('@spawndotfamily/sdk/testing/table-scenarios.mjs'),
     /testing\/table-scenarios\.mjs$/,
   );

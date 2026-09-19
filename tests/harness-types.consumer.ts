@@ -7,6 +7,12 @@
 import { createLoopbackTableService, stubClient } from '@spawndotfamily/sdk/testing/loopback-table-service.mjs';
 import { runFleet } from '@spawndotfamily/sdk/testing/table-fleet.mjs';
 import { runScenarios, checkConservation, executeScenario, summarize, wantsJson } from '@spawndotfamily/sdk/testing/scenario-runner.mjs';
+import {
+  createLoopbackPayoutService,
+  stubClient as stubPayoutClient,
+  PAYOUT_POLICY,
+} from '@spawndotfamily/sdk/testing/loopback-payout-service.mjs';
+import type { SpawnPayoutReceipt } from '@spawndotfamily/sdk/server';
 
 const service = createLoopbackTableService({ now: () => Date.now() });
 const funded = createLoopbackTableService({ balances: { 'player-1': '1000', 'player-2': 500 } });
@@ -51,3 +57,41 @@ void trackedBalance;
 void fleetBalanced;
 void fleetRefusals;
 void fleetTableBuyIns;
+
+// the payout client and its loopback double are typed too: deposit -> claim -> redeem
+const payouts = createLoopbackPayoutService({
+  members: { '10000000-1111-4111-8111-111111111111': '1000' },
+  pool: '500',
+});
+const payoutReceipt: SpawnPayoutReceipt = await payouts.client.create({
+  operationId: '20000000-1111-4111-8111-111111111111',
+  playerId: '10000000-1111-4111-8111-111111111111',
+  amount: '25',
+  depositId: '30000000-1111-4111-8111-111111111111',
+  reason: 'reward',
+});
+const payoutReadBack: SpawnPayoutReceipt | null = await payouts.client.operation('20000000-1111-4111-8111-111111111111');
+const payoutDeposit = payouts.deposit('10000000-1111-4111-8111-111111111111', '100');
+const payoutPool: string = payouts.pool();
+const payoutBalance: string | null = payouts.balance('10000000-1111-4111-8111-111111111111');
+const payoutLast: SpawnPayoutReceipt | null = payouts.state('10000000-1111-4111-8111-111111111111').lastPayout;
+const payoutConservation: { balanced: boolean; delta: string; detail: string } = payouts.conservation();
+const payoutTransport: typeof globalThis.fetch = payouts.transport;
+const payoutWrites: number = PAYOUT_POLICY.writesPerMinute;
+payouts.expireLaunch('10000000-1111-4111-8111-111111111111');
+payouts.suspend('custody');
+payouts.resume();
+payouts.loseNextResponse('create');
+payouts.advance(60_000);
+const payoutStubbed = stubPayoutClient(payouts.client, { create: async () => { throw new Error('offline'); } } as never);
+
+void payoutReceipt;
+void payoutReadBack;
+void payoutDeposit.depositId;
+void payoutPool;
+void payoutBalance;
+void payoutLast;
+void payoutConservation.balanced;
+void payoutTransport;
+void payoutWrites;
+void payoutStubbed;

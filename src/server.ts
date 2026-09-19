@@ -174,4 +174,14 @@ export type {
     SpawnTableOperationResult,
     SpawnTableErrorDetails,
 } from './table-server.ts';
+export { createSpawnPayoutClient, SpawnPayoutRequestError } from './payout-server.ts';
+export type {
+    SpawnPayoutClient,
+    SpawnPayoutClientOptions,
+    SpawnPayoutErrorDetails,
+    SpawnPayoutInput,
+    SpawnPayoutOperation,
+    SpawnPayoutReceipt,
+} from './payout-server.ts';
+
 export type { SpawnBalancePlayer, SpawnTokenBalance, SpawnTokenBalances } from './token-balances.ts';

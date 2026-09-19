@@ -77,7 +77,7 @@ Server reads throw `SpawnTokenBalanceError`, exported from `/server`, with `code
 - `HTTP_RATE_LIMITED` (429): coalesce calls and respect `retryAfterMs`.
 - `NETWORK_ERROR`, `REQUEST_TIMEOUT`, `INVALID_RESPONSE`: discard the read, keep an explicitly stale display if useful, then refresh. Do not present it as a confirmed payment or silently replace it with zero.
 
-A balance snapshot is **not** an allowance, hold, payment receipt or authorization to debit a player. Pending withdrawals and existing match reservations reduce available balance. Unaccepted trade offers do not reserve funds, so balances may change before confirmation. Every sender still confirms their exact tokens through Spawn. Use the existing trade/payment/match APIs for transfers; never implement transfers by editing a displayed balance. A creator cannot approve for a player merely because it can read their balance.
+A balance snapshot is **not** an allowance, hold, payment receipt or authorization to debit a player. Pending withdrawals and existing match reservations reduce available balance. Unaccepted trade offers do not reserve funds, so balances may change before confirmation. Every sender still confirms their exact tokens through Spawn. Use the existing trade/payment/match APIs for transfers; never implement transfers by editing a displayed balance. Server-decided rewards and deposit redemptions from the game's pool use the server-only [payout API](payouts.md) with the same dedicated server key — a balance read never authorizes a payout, and the browser cannot call that route at all. A creator cannot approve for a player merely because it can read their balance.
 
 ## Upgrade and verify with no private platform access
 
