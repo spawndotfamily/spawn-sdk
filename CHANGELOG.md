@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.10.0
+
+### Added
+
+- **Server-credential payouts — the missing primitive for game→player economies.** `createSpawnPayoutClient` (from `@spawndotfamily/sdk/server`) pays a registered member from the game's own token pool: reward loops, deposit/redemption vaults and any "creator pays a verified member" flow now have a supported API instead of a manual dashboard action. The game's dedicated match server credential authorizes it — a browser can never call it. `operationId` is the single idempotency key: an identical retry returns the same receipt and moves money exactly once, and `operation(operationId)` reconciles an unknown outcome before you ever pay again. With `depositId` the payout is capped at that paid deposit, cumulative across payouts; without `launchId` it pays any registered member of the game (so redemption works while the player is offline), while supplying `launchId` applies the strict active-launch chain. The recipient is always resolved server-side from `playerId`; guests are refused.
+- **`testing/loopback-payout-service.mjs`** — a headless double that wires the REAL payout client to a fake platform, so an agent can prove the loop before launch: simulate a paid deposit, issue the claim, redeem it, and assert the member is credited exactly what the pool is debited; replays credit once; overdraft, non-member and over-cap payouts are refused; conservation holds.
+- **`testing/table-fleet.mjs`** — run a fleet of simulated players across many tables headlessly (`--players 100`): seating, approvals, hands, cash-outs, a disconnect/reconnect, per-table and aggregate conservation, and a non-zero exit on any imbalance. 1 000 players complete in well under a second.
+- **Opt-in per-player test balances** in the loopback table service (`{ balances: { [playerId]: '1000' } }`): an approval a player cannot fund is refused at the click with `INSUFFICIENT_BALANCE` — where the real overlay refuses it — and tracked wallets debit on approval and credit on cash-out exactly once. Omit the option and behaviour is unchanged.
+- `docs/payouts.md` — creator-facing guide: idempotency and reconciliation, the two recipient modes, caps and error handling, and testing the loop locally.
+
+### Changed
+
+- `docs/server-setup.md` describes the `match.key` credential as also covering payouts; `docs/token-balances.md` cross-references that a balance read never authorizes a payout; `docs/creator-checklist.md` includes the payout step for reward/redemption flows. `docs/table-bankroll.md`'s coverage note now reflects the fleet driver and opt-in balances instead of claiming N-player concurrency is uncovered.
+
+### Upgrade notes
+
+- Additive: no existing API, wire format or behaviour changed. Use the payout client only on an authoritative server and keep the credential out of browser bundles.
+
 ## 0.9.7
 
 ### Added
