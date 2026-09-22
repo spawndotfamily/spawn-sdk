@@ -1,6 +1,6 @@
 # Test your game locally
 
-Use the same browser integration before and after upload. The local launcher supplies fake players and TEST balances; it has no connection to Spawn accounts, wallets or rewards. Its `spawn-dev` bridge deliberately remains a fixed TEST simulator. Validate listing-configured token selection and custom token amounts in a private Spawn preview.
+For Listing-token payments, multiplayer tables, trades and match approvals, use [the local approval host](local-approval-testing.md). SDK 0.11.0 packages Spawn’s real approval components and ledger code with synthetic players, so an agent can automate approvals locally. Use `spawn-dev` below for isolated saves, scores and legacy fixed TEST integration. Both are local simulations with no connection to hosted balances.
 
 ## Build, open, play
 
@@ -49,7 +49,7 @@ The fixtures are bounded and held only in this page's memory. **Reset testing** 
 `check` streams file hashes and validates the 8 GB client safety ceiling, 1,000 file and 1 MB entry limits without credentials; the platform still applies its default 1 GB admission or a documented owner allowance. It cannot prove the game is playable. Test the real isolated preview after upload, including sign-in, account labels, save limits, optional payment consent, cancellation and reopening. Local success is not certification of payment eligibility, fair play or security. Keep automatic rewards from browser-reported outcomes off.
 
 
-## Test the creator pool
+## Legacy spawn-dev creator pool simulator
 
 All balances are fake and belong to this one local browser session:
 
@@ -75,7 +75,7 @@ Creator controls are launcher tools, **not game SDK methods**. Do not copy them 
 
 Keep `createSpawnGameClient()` unchanged. The explicit local launcher supplies its public origin and a local isolated connection. Spawn's own launcher supplies Spawn's origin and an account-bound connection for the player who pressed Play. No credentials or fake accounts are compiled into the game, and local balances never migrate into Spawn.
 
-Opening the game directly, outside either supported launcher, must show a connection error. A failed or closed Spawn connection must never activate fake players. Do not detect trust from a hostname, referrer, query parameter or `NODE_ENV`; the SDK requires the launcher handshake. Publishing does not enable live money: Spawn's current account, payment and receipt contract is still `environment: 'sandbox'` with TEST tokens. Local mode also uses that label; it is not a switch for financial authority.
+Opening the game directly, outside either supported launcher, must show a connection error. A failed or closed Spawn connection must never activate fake players. Do not detect trust from a hostname, referrer, query parameter or `NODE_ENV`; the SDK requires the launcher handshake. Publishing does not enable live money: Hosted payments use the Listing’s admitted testnet token; the `environment: 'sandbox'` label does not mean historical TEST credits. Local mode also uses that label; it is not a switch for financial authority.
 
 Before publication, test the **same browser build** in its private Spawn preview with a real Spawn account. That catches platform authorization, quotas and deployed integration differences that a local simulation cannot certify. Multiplayer authentication and creator-owned server behavior require their own tests; this launcher does not simulate a game server or production authentication.
 

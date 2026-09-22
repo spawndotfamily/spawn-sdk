@@ -2,6 +2,8 @@ import { localBalanceOrigin, createTokenMethods, type SpawnTokens } from './toke
 export type { SpawnTokens, SpawnTokenBalance, SpawnTokenBalances, SpawnBalancePlayer } from './token-balances.ts';
 import { createTradeMethods, type SpawnTrades, type SpawnTradeAction } from './trades.ts';
 export type { SpawnTrade, SpawnTrades } from './trades.ts';
+import type { SpawnTokenPaymentOptions, SpawnTokenPaymentReceipt } from './index.ts';
+export type { SpawnTokenPaymentOptions, SpawnTokenPaymentReceipt } from './index.ts';
 import {
     validateSpawnTableBuyInResult,
     validateSpawnTablePlayerStatus,
@@ -48,6 +50,8 @@ export type SpawnMultiplayerClient = {
         matchId: string;
         status: 'reserved' | 'cancelled';
     }>;
+    /** Opens Spawn's shared confirmation UI for an explicit optional Listing-token payment. */
+    requestTokenPayment(options: SpawnTokenPaymentOptions): Promise<SpawnTokenPaymentReceipt>;
     /** Presentation only. Never authorizes a player, action or reward. */
     reportConnection(state: 'connecting' | 'ready' | 'disconnected'): boolean;
     dispose(): void;
@@ -58,11 +62,25 @@ type ActiveClient = {
     client: SpawnMultiplayerClient;
 };
 const clients = new WeakMap<Window, ActiveClient>(), closedDocuments = new WeakSet<Window>();
-const DURATION = 8000, LOAD_DURATION = 45000, MATCH_ENTRY_DURATION = 120000, TABLE_HEARTBEAT_INTERVAL = 20000, TABLE_TIMEOUT = 15000, TABLE_BUYIN_TIMEOUT = 300000, PREFIX = 'spawn:multiplayer-';
+const DURATION = 8000, LOAD_DURATION = 45000, MATCH_ENTRY_DURATION = 120000, TOKEN_PAYMENT_DURATION = 300000, TABLE_HEARTBEAT_INTERVAL = 20000, TABLE_TIMEOUT = 15000, TABLE_BUYIN_TIMEOUT = 300000, PREFIX = 'spawn:multiplayer-';
+const TOKEN_PAYMENT_AMOUNT_PATTERN = /^(?:0|[1-9][0-9]*)(?:\.[0-9]+)?$/;
+const TOKEN_PAYMENT_ITEM_MAX_LENGTH = 80;
 const object = (value: unknown): value is Record<string, unknown> => value !== null && typeof value === 'object' && !Array.isArray(value);
 const exact = (value: Record<string, unknown>, keys: string[]) => Object.keys(value).length === keys.length && keys.every(key => Object.hasOwn(value, key));
 const uuid = (value: unknown): value is string => typeof value === 'string' && /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(value);
 const tableUuid = (value: unknown): value is string => typeof value === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+function validTokenPaymentReceipt(value: unknown, platformOrigin: string): value is SpawnTokenPaymentReceipt {
+    if (!object(value) || !exact(value, ['id', 'assetId', 'amount', 'projectId', 'status'])) return false;
+    if (typeof value.id !== 'string' || value.id.length === 0 || value.id.length > 128 || /[\u0000-\u001f\u007f]/.test(value.id)) return false;
+    if (typeof value.assetId !== 'string' || !/^erc20:(?:46630|31337):0x[a-f0-9]{40}$/.test(value.assetId)) return false;
+    if (value.assetId.startsWith('erc20:31337:')) {
+        const hostname = new URL(platformOrigin).hostname.toLowerCase();
+        if (!['localhost', '127.0.0.1', '[::1]', '::1'].includes(hostname)) return false;
+    }
+    if (typeof value.amount !== 'string' || !/^[1-9][0-9]*$/.test(value.amount) || value.amount.length > 78) return false;
+    if (BigInt(value.amount) > (1n << 256n) - 1n) return false;
+    return uuid(value.projectId) && value.status === 'paid';
+}
 function trustedOrigin(value: string) {
     let url: URL;
     try {
@@ -116,6 +134,15 @@ export function createSpawnMultiplayerClient(options: SpawnMultiplayerOptions): 
         matchId: string;
         promise: Promise<{ matchId: string; status: 'reserved' | 'cancelled' }>;
         resolve: (value: { matchId: string; status: 'reserved' | 'cancelled' }) => void;
+        reject: (error: Error) => void;
+        timer?: ReturnType<typeof setTimeout>;
+    } | null = null;
+    let pendingTokenPayment: {
+        id: string;
+        amount: string;
+        item?: string;
+        promise: Promise<SpawnTokenPaymentReceipt>;
+        resolve: (value: SpawnTokenPaymentReceipt) => void;
         reject: (error: Error) => void;
         timer?: ReturnType<typeof setTimeout>;
     } | null = null;
@@ -227,6 +254,11 @@ export function createSpawnMultiplayerClient(options: SpawnMultiplayerOptions): 
             pendingMatchEntry.reject(new Error('The Spawn launch closed; match entry status is unknown.'));
             pendingMatchEntry = null;
         }
+        if (pendingTokenPayment) {
+            clearTimeout(pendingTokenPayment.timer);
+            pendingTokenPayment.reject(new Error('The Spawn launch closed; token payment outcome is unknown.'));
+            pendingTokenPayment = null;
+        }
     }
     function post(value: Record<string, unknown>) { try {
         port?.postMessage({ ...value, version: 1, nonce });
@@ -283,6 +315,22 @@ export function createSpawnMultiplayerClient(options: SpawnMultiplayerOptions): 
                 request.resolve({ matchId: request.matchId, status: value.status as 'reserved' | 'cancelled' });
             else
                 request.reject(new Error('Spawn could not complete this match entry request.'));
+            return;
+        }
+        if (pendingTokenPayment && value.requestId === pendingTokenPayment.id) {
+            const request = pendingTokenPayment;
+            const result = value.type === PREFIX + 'token-payment-result' && exact(value, ['type', 'version', 'nonce', 'requestId', 'receipt']);
+            const failed = value.type === PREFIX + 'token-payment-error' && exact(value, ['type', 'version', 'nonce', 'requestId', 'message']);
+            if (!result && !failed)
+                return;
+            if (failed && (typeof value.message !== 'string' || value.message.length > 160))
+                return;
+            pendingTokenPayment = null;
+            clearTimeout(request.timer);
+            if (result && validTokenPaymentReceipt(value.receipt, platformOrigin))
+                request.resolve(value.receipt);
+            else
+                request.reject(new Error(failed ? 'Spawn could not complete this token payment.' : 'Spawn returned an invalid token payment receipt.'));
             return;
         }
         if (!pending || value.requestId !== pending.id)
@@ -374,6 +422,54 @@ export function createSpawnMultiplayerClient(options: SpawnMultiplayerOptions): 
         });
         return promise;
     }
+    function requestTokenPayment(input: SpawnTokenPaymentOptions): Promise<SpawnTokenPaymentReceipt> {
+        if (!object(input) || !Object.hasOwn(input, 'amount') || Object.keys(input).some(key => !['amount', 'item', 'requestId'].includes(key)))
+            return Promise.reject(new Error('Token payment requires an explicit amount; only an optional item label and request ID may be supplied.'));
+        const amount = input.amount, item = input.item;
+        if (typeof amount !== 'string' || amount.length > 512 || !TOKEN_PAYMENT_AMOUNT_PATTERN.test(amount))
+            return Promise.reject(new Error('Token payment amount must be a decimal string without a sign or exponent.'));
+        const [whole, fraction = ''] = amount.split('.');
+        if (BigInt(whole) === 0n && !/[1-9]/.test(fraction))
+            return Promise.reject(new Error('Token payment amount must be greater than zero.'));
+        if (item !== undefined && (typeof item !== 'string' || item.trim() === '' || item.length > TOKEN_PAYMENT_ITEM_MAX_LENGTH || /[\u0000-\u001f\u007f]/.test(item)))
+            return Promise.reject(new Error(`Token payment item label must contain 1–${TOKEN_PAYMENT_ITEM_MAX_LENGTH} printable characters.`));
+        const requestId = input.requestId === undefined ? crypto.randomUUID() : input.requestId;
+        if (!uuid(requestId))
+            return Promise.reject(new Error('Token payment requestId must be a UUID.'));
+        if (pendingMatchEntry)
+            return Promise.reject(new Error('A match entry request is already pending.'));
+        if (pendingTokenPayment) {
+            if (pendingTokenPayment.id === requestId && pendingTokenPayment.amount === amount && pendingTokenPayment.item === item)
+                return pendingTokenPayment.promise;
+            return Promise.reject(new Error('A token payment request is already pending.'));
+        }
+        let resolve!: (value: SpawnTokenPaymentReceipt) => void, reject!: (error: Error) => void;
+        const promise = new Promise<SpawnTokenPaymentReceipt>((yes, no) => { resolve = yes; reject = no; });
+        const request = { id: requestId, amount, ...(item === undefined ? {} : { item }), promise, resolve, reject, timer: undefined as ReturnType<typeof setTimeout> | undefined };
+        pendingTokenPayment = request;
+        void readyPromise.then(() => {
+            if (closed || pendingTokenPayment !== request)
+                return;
+            if (!confirmed || !port) {
+                pendingTokenPayment = null;
+                request.reject(new Error('The Spawn launch is closed.'));
+                return;
+            }
+            request.timer = setTimeout(() => {
+                if (pendingTokenPayment !== request)
+                    return;
+                pendingTokenPayment = null;
+                request.reject(new Error('Spawn did not respond; token payment outcome is unknown.'));
+            }, TOKEN_PAYMENT_DURATION);
+            post({ type: PREFIX + 'token-payment-request', requestId, amount, ...(item === undefined ? {} : { item }) });
+        }).catch((error: unknown) => {
+            if (pendingTokenPayment !== request)
+                return;
+            pendingTokenPayment = null;
+            request.reject(error instanceof Error ? error : new Error('The Spawn launch is closed.'));
+        });
+        return promise;
+    }
     function loaded() {
         w.removeEventListener('load', loaded);
         if (closed || confirmed) return;
@@ -436,7 +532,7 @@ export function createSpawnMultiplayerClient(options: SpawnMultiplayerOptions): 
             return startTableWatch(normalizeTableId(tableId));
         },
     };
-    const client = { tables, tokens: createTokenMethods(payload => sendTrade('balances', payload), localBalanceOrigin(platformOrigin)), trades: createTradeMethods(sendTrade), ready: () => readyPromise, requestGrant, requestMatchEntry, reportConnection, dispose };
+    const client = { tables, tokens: createTokenMethods(payload => sendTrade('balances', payload), localBalanceOrigin(platformOrigin)), trades: createTradeMethods(sendTrade), ready: () => readyPromise, requestGrant, requestMatchEntry, requestTokenPayment, reportConnection, dispose };
     clients.set(w, { platformOrigin, serverOrigin, client });
     w.addEventListener('message', offer);
     w.addEventListener('pagehide', dispose, { once: true });

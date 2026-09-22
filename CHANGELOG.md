@@ -1,5 +1,26 @@
 # Changelog
 
+## 0.11.0
+
+### Added
+
+- **Local Spawn approval host**: `npx spawn-test-host` and `startSpawnTestHost` ship the actual platform approval components, ledger and token API handlers in a loopback-only process. Ordinary creators can test without a Spawn account, hosted preview, real funds or private infrastructure. Use 1–1,000 independent synthetic players, with 2–6 seats per table and larger fleets across tables.
+- Ordinary `createSpawnGameClient` builds (`--game-dir`) and multiplayer servers (`--game-url`) both use their actual isolated iframe/MessageChannel transport. Signed local multiplayer admission, browser-driven table/match/trade/token approvals, durable local SQLite state, interrupted-response injection, clock advancement and status recovery. Approval is never automatic; browser automation clicks the same Spawn confirmation controls.
+- Public deployment/configuration guide and runnable browser examples in `docs/local-approval-testing.md`. Packaged types, artifact integrity checks, 100-player conservation tests and browser approval checks run before publishing.
+- Multiplayer `requestTokenPayment({ amount, item, requestId })` now supports optional exact Listing-token payments through the same Spawn-owned confirmation UI. The game does not choose the contract. Receipts are validated; concurrent duplicates share an outstanding request and interrupted outcomes require reconciliation.
+
+### Changed
+
+- Table loopback double now rolls back rejected mutations and enforces capacity, expiry, recovery and closed-table behavior. Payout-double status remains readable after suspension, while new payouts are blocked. These fast doubles remain separate from the new production-source test host.
+- Removed an accidentally tracked machine-specific `node_modules` symlink. The package carries reproducible runtime artifacts and licensed local fonts, never an installed dependency directory.
+- Paired platform fixes recheck payout suspension/removal inside the balance transaction and scope transfer IDs to the game. Insufficient table funds now return a typed conflict instead of an ambiguous service failure. The preview download allowlist now includes the current SDK releases.
+
+### Upgrade notes
+
+- Additive SDK release. Build the SDK into your game, then follow `docs/local-approval-testing.md`; do not add fake identities or approval shortcuts to game code. Node 22.13+ is required; Node 24 is recommended.
+- Local `LOCAL` balances and credentials are isolated simulations. They cannot deposit, withdraw or spend hosted tokens. Keep the generated local configuration outside browser bundles and source control.
+- Passing local tests checks game logic, bridge/approval behavior and ledger invariants. Still verify the uploaded build, hosted account/credential setup, network behavior and two-player flow in a private preview. No local harness guarantees all production behavior.
+
 ## 0.10.0
 
 ### Added

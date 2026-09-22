@@ -26,6 +26,8 @@ Replace `game.example` with your registered origin. Pin both origins in trusted 
 
 When Spawn has enabled match entry for your game, use `requestMatchEntry({ matchId })` for the Spawn-owned confirmation for the Listing's selected testnet token. It returns a presentation acknowledgement only; it does not authorize admission or signal that a reserved match has started. See [match-entry presentation](match-payments.md).
 
+For a separate optional payment, use `requestTokenPayment({ amount, item?, requestId? })`. `amount` is required and must be a positive exact human-readable decimal string; `item` is an optional 1–80 character printable label, and `requestId` is an optional UUID. The Listing selects the token, so multiplayer game code never supplies a contract, player, recipient or fee. Spawn opens the same trusted token confirmation overlay used by the document client and resolves with `{ id, assetId, amount, projectId, status: 'paid' }` only after the player confirms. Guests cannot pay. Cancellation, bridge disposal or a timeout rejects the call; if the result is uncertain, retry manually with the same `requestId`, amount and item so Spawn can reuse the durable quote. Never retry automatically or treat a launch ticket as payment proof.
+
 Call `dispose()` on teardown. Page navigation disposes automatically, rejects pending work and prevents reconnecting the old document capability. A timeout or closed launch requires a visible recovery path; do not silently use a claimed identity. Keep your game's existing offline/practice path independent.
 
 ## Server-only module
@@ -75,6 +77,8 @@ No universal anti-cheat, automatic ban, authoritative score upload, live payment
 The generic namespace is `spawn:multiplayer-`, version 1. A Spawn-launched frame receives a random 256-bit `spawnBridge` fragment capability and creates a fresh UUID nonce. It sends `ready` to the explicit parent origin. The platform validates the exact child window, opaque origin, capability and current document lifecycle, then offers exactly one MessagePort. The child accepts it only from the pinned parent/source and matching nonce. `ack` and `confirm` complete on that port before any grant request.
 
 All port envelopes contain `{type,version:1,nonce}`. `grant-request` includes a UUID `requestId`; `grant` includes the matching request ID, ticket and pinned server origin; `grant-error` includes the request ID and a bounded platform-owned error. The SDK does not expose raw RPC or pass arbitrary responses to privileged APIs. Handshake/grant deadlines are eight seconds; only one grant request is outstanding. No namespaces are mixed within a document/channel. Existing legacy game documents may retain their old protocol until migrated; the new SDK does not silently fall back to it.
+
+Generic multiplayer payments use `spawn:multiplayer-token-payment-request` and its matching result/error messages on the confirmed port. The request carries only the exact amount, optional item and UUID request ID; the platform binds it to the signed-in launch session before showing the shared confirmation UI. The game server still decides admission and outcomes independently.
 
 Do not manufacture a document capability or sign your own Spawn ticket to make production launch appear to work. For local transport tests use isolated in-memory fixtures, never platform private keys. Public-game enablement, runtime origin restrictions and real launch checks remain platform acceptance steps.
 

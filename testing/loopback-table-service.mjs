@@ -77,6 +77,7 @@ export function createLoopbackTableService({ now = Date.now, asset: assetOverrid
   let state = null;
   let loseAction = null;
   const quotes = new Map();
+  const quoteRequests = new Map();
   const operations = new Map();
   const calls = [];
 
@@ -84,6 +85,11 @@ export function createLoopbackTableService({ now = Date.now, asset: assetOverrid
   const restoreQuotes = (saved) => {
     quotes.clear();
     for (const [key, value] of saved) quotes.set(key, value);
+  };
+  const copyQuoteRequests = () => new Map(quoteRequests);
+  const restoreQuoteRequests = (saved) => {
+    quoteRequests.clear();
+    for (const [key, value] of saved) quoteRequests.set(key, value);
   };
   const copyWallets = () => (wallets === null ? null : new Map(wallets));
   const restoreWallets = (saved) => {
@@ -146,6 +152,7 @@ export function createLoopbackTableService({ now = Date.now, asset: assetOverrid
   function sweep() {
     if (!state) return;
     const now = timestamp();
+    let changed = false;
     for (const quote of quotes.values()) {
       if (quote.status === 'pending' && quote.expiresAt <= now) quote.status = 'expired';
     }
@@ -155,6 +162,7 @@ export function createLoopbackTableService({ now = Date.now, asset: assetOverrid
         if (seat) seat.stack = (BigInt(seat.stack) + BigInt(player.contribution)).toString();
       }
       state.hand = null;
+      changed = true;
     }
     if (state.status === 'open' &&
       (now >= state.maxEndsAt || state.leaseExpiresAt !== null && now >= state.leaseExpiresAt)) {
@@ -169,40 +177,50 @@ export function createLoopbackTableService({ now = Date.now, asset: assetOverrid
       for (const seat of [...seats()]) cashOutSeat(seat);
       state.status = 'closed';
       state.leaseExpiresAt = null;
+      changed = true;
     }
     for (const seat of [...seats()]) {
       if (seat.disconnectDeadline !== null && now >= seat.disconnectDeadline) {
         seat.status = 'leaving';
         seat.disconnectDeadline = null;
         seat.connectedUntil = null;
+        changed = true;
       }
       if (seat.status === 'active' && seat.connectedUntil !== null && now >= seat.connectedUntil) {
         seat.status = 'leaving';
         seat.connectedUntil = null;
+        changed = true;
       }
       const inHand = state.hand?.players.some((player) => player.seatId === seat.seatId);
-      if (seat.status === 'leaving' && !inHand) cashOutSeat(seat);
+      if (seat.status === 'leaving' && !inHand) {
+        cashOutSeat(seat);
+        changed = true;
+      }
     }
+    if (changed) state.revision += 1;
     totals();
   }
 
   function snapshot(tableId) {
-    sweep();
     if (!state) throw fail('Not found', 404);
     if (tableId !== undefined && state.tableId !== tableId) throw fail('Not found', 404);
+    sweep();
     return clone(state);
   }
 
   /** Durable operation semantics: same id + body replays the saved result. */
-  function mutate(action, input, apply) {
+  function mutate(action, input, apply, tableId) {
+    if (tableId !== undefined && state !== null && state.tableId !== tableId) throw fail('Not found', 404);
     if (operations.has(input.operationId)) {
       const saved = operations.get(input.operationId);
+      if (tableId !== undefined && saved.tableId !== tableId) throw fail('Not found', 404);
       if (saved.action !== action || JSON.stringify(saved.input) !== JSON.stringify(input))
         throw fail('Conflicting operation body.');
       return clone(saved.result);
     }
     const stateBefore = state === null ? null : clone(state);
     const quotesBefore = copyQuotes();
+    const quoteRequestsBefore = copyQuoteRequests();
     const walletsBefore = copyWallets();
     let result;
     try {
@@ -214,6 +232,7 @@ export function createLoopbackTableService({ now = Date.now, asset: assetOverrid
       operations.set(input.operationId, {
         operationId: input.operationId,
         action,
+        tableId,
         result: clone(result),
         input: clone(input),
       });
@@ -221,6 +240,7 @@ export function createLoopbackTableService({ now = Date.now, asset: assetOverrid
     } catch (error) {
       state = stateBefore;
       restoreQuotes(quotesBefore);
+      restoreQuoteRequests(quoteRequestsBefore);
       restoreWallets(walletsBefore);
       throw error;
     }
@@ -250,16 +270,21 @@ export function createLoopbackTableService({ now = Date.now, asset: assetOverrid
           hand: null,
           totals: { buyIns: '0', cashOuts: '0', stacks: '0', committed: '0', pendingCashOuts: '0', backing: '0' },
         };
-      });
+      }, input.tableId);
     },
     async status(tableId) {
       return snapshot(tableId);
     },
     async heartbeat(tableId) {
-      sweep();
       if (!state || state.tableId !== tableId) throw fail('Not found', 404);
-      if (state.status === 'open')
-        state.leaseExpiresAt = Math.min(timestamp() + TABLE_POLICY.leaseMs, state.maxEndsAt);
+      sweep();
+      if (state.status === 'open') {
+        const nextLease = Math.min(timestamp() + TABLE_POLICY.leaseMs, state.maxEndsAt);
+        if (state.leaseExpiresAt === null || nextLease > state.leaseExpiresAt) {
+          state.leaseExpiresAt = nextLease;
+          state.revision += 1;
+        }
+      }
       return snapshot(tableId);
     },
     async operation(tableId, operationId) {
@@ -272,7 +297,17 @@ export function createLoopbackTableService({ now = Date.now, asset: assetOverrid
       return mutate('requestBuyIn', input, () => {
         if (!state || state.tableId !== tableId) throw fail('Not found', 404);
         if (state.status !== 'open') throw fail('Table is not open.');
+        const requestKey = JSON.stringify(input);
+        const existingQuote = quotes.get(input.buyInId);
+        if (existingQuote) {
+          if (existingQuote.tableId !== tableId || quoteRequests.get(input.buyInId) !== requestKey)
+            throw fail('Buy-in ID was already used with a different request.');
+          return;
+        }
         const existing = seats().find((seat) => seat.playerId === input.player.playerId);
+        if (existing?.status === 'leaving') throw fail('A leaving seat cannot be re-bought.');
+        if (existing && state.hand?.players.some((player) => player.seatId === existing.seatId))
+          throw fail('Rebuys are allowed only between hands.');
         if ([...quotes.values()].some(
           (quote) => quote.tableId === tableId && quote.playerId === input.player.playerId && quote.status === 'pending',
         )) throw fail('This player already has a pending buy-in.');
@@ -299,17 +334,20 @@ export function createLoopbackTableService({ now = Date.now, asset: assetOverrid
           settingsVersion: 1,
           expiresAt: Math.min(timestamp() + TABLE_POLICY.quoteMs, state.maxEndsAt),
         });
-      });
+        quoteRequests.set(input.buyInId, requestKey);
+      }, tableId);
     },
     async buyIn(tableId, buyInId) {
-      sweep();
       if (!state || state.tableId !== tableId) throw fail('Not found', 404);
+      sweep();
       const quote = quotes.get(buyInId);
       if (!quote) throw fail('Unknown buy-in quote.', 404);
       return clone(quote);
     },
-    async startHand(_tableId, input) {
+    async startHand(tableId, input) {
       return mutate('startHand', input, () => {
+        if (!state || state.tableId !== tableId) throw fail('Not found', 404);
+        if (state.status !== 'open') throw fail('Table is not open.');
         if (state.hand) throw fail('A hand is already running.');
         for (const player of input.players) {
           const seat = seats().find(
@@ -319,6 +357,7 @@ export function createLoopbackTableService({ now = Date.now, asset: assetOverrid
               candidate.status === 'active',
           );
           if (!seat) throw fail('Seat does not match an active player.');
+          if (BigInt(seat.stack) <= 0n) throw fail('Every hand player needs a funded active seat.');
         }
         state.hand = {
           handId: input.handId,
@@ -327,25 +366,33 @@ export function createLoopbackTableService({ now = Date.now, asset: assetOverrid
           players: input.players.map((player) => ({ ...player, contribution: '0', folded: false })),
           pots: [],
         };
-      });
+      }, tableId);
     },
-    async commitHand(_tableId, input) {
+    async commitHand(tableId, input) {
       return mutate('commitHand', input, () => {
+        if (!state || state.tableId !== tableId) throw fail('Not found', 404);
         const hand = state.hand;
         if (hand?.handId !== input.handId || hand.revision !== input.expectedRevision)
           throw fail('Hand revision is stale.');
         for (const contribution of input.contributions) {
           const player = hand.players.find((candidate) => candidate.playerId === contribution.playerId);
           const seat = seats().find((candidate) => candidate.playerId === contribution.playerId);
-          if (!player || !seat || BigInt(seat.stack) < BigInt(contribution.amount))
+          if (!player) throw fail('Contribution player is not in this hand.');
+          if (player.folded) throw fail('A folded player cannot contribute.');
+          if (!seat) throw fail('Contribution seat is not active.');
+          if (seat.status !== 'active') throw fail('A leaving seat cannot commit.');
+          if (BigInt(seat.stack) < BigInt(contribution.amount))
             throw fail('Insufficient stack for contribution.');
           seat.stack = (BigInt(seat.stack) - BigInt(contribution.amount)).toString();
           player.contribution = (BigInt(player.contribution) + BigInt(contribution.amount)).toString();
         }
         for (const playerId of input.folded) {
           const player = hand.players.find((candidate) => candidate.playerId === playerId);
-          if (player) player.folded = true;
+          if (!player) throw fail('Folded player is not in this hand.');
+          player.folded = true;
         }
+        if (hand.players.every((player) => player.folded))
+          throw fail('At least one eligible player must remain.');
         hand.pots = tiers().filter((pot) => {
           const atCap = hand.players.filter(
             (player) => BigInt(player.contribution) >= BigInt(pot.cap),
@@ -353,13 +400,16 @@ export function createLoopbackTableService({ now = Date.now, asset: assetOverrid
           return atCap > 1;
         });
         hand.revision += 1;
-      });
+      }, tableId);
     },
-    async settleHand(_tableId, input) {
+    async settleHand(tableId, input) {
       return mutate('settleHand', input, () => {
+        if (!state || state.tableId !== tableId) throw fail('Not found', 404);
         const hand = state.hand;
         if (hand?.handId !== input.handId || hand.revision !== input.expectedRevision)
           throw fail('Hand revision is stale.');
+        if (hand.players.every((player) => player.folded))
+          throw fail('At least one eligible player must remain.');
         const allTiers = tiers();
         const refunds = allTiers.filter(
           (pot) => hand.players.filter((player) => BigInt(player.contribution) >= BigInt(pot.cap)).length === 1,
@@ -390,10 +440,11 @@ export function createLoopbackTableService({ now = Date.now, asset: assetOverrid
         }
         state.hand = null;
         for (const seat of [...seats()]) if (seat.status === 'leaving') cashOutSeat(seat);
-      });
+      }, tableId);
     },
-    async cashOut(_tableId, input) {
+    async cashOut(tableId, input) {
       return mutate('cashOut', input, () => {
+        if (!state || state.tableId !== tableId) throw fail('Not found', 404);
         const seat = seats().find(
           (candidate) => candidate.seatId === input.seatId && candidate.playerId === input.playerId,
         );
@@ -401,16 +452,17 @@ export function createLoopbackTableService({ now = Date.now, asset: assetOverrid
         const inHand = state.hand?.players.some((player) => player.seatId === seat.seatId);
         if (inHand) seat.status = 'leaving';
         else cashOutSeat(seat);
-      });
+      }, tableId);
     },
-    async disconnect(_tableId, input) {
+    async disconnect(tableId, input) {
       return mutate('disconnect', input, () => {
+        if (!state || state.tableId !== tableId) throw fail('Not found', 404);
         const seat = seats().find(
           (candidate) => candidate.seatId === input.seatId && candidate.playerId === input.playerId,
         );
         if (!seat) throw fail('Seat generation does not match.');
         seat.disconnectDeadline = timestamp() + TABLE_POLICY.disconnectGraceMs;
-      });
+      }, tableId);
     },
     async close(tableId, input) {
       return mutate('close', input, () => {
@@ -446,7 +498,7 @@ export function createLoopbackTableService({ now = Date.now, asset: assetOverrid
         state.status = 'closed';
         state.leaseExpiresAt = null;
         state.revision += 1;
-      });
+      }, tableId);
     },
   };
 
@@ -541,6 +593,8 @@ export function createLoopbackTableService({ now = Date.now, asset: assetOverrid
           );
         const existing = seats().find((seat) => seat.playerId === playerId);
         if (existing && existing.status !== 'active') throw fail('A leaving seat cannot be re-bought.');
+        if (existing && state.hand?.players.some((player) => player.seatId === existing.seatId))
+          throw fail('Rebuys are allowed only between hands.');
         if (!existing && seats().length >= state.maxSeats) throw fail('The table has no available seat.');
         if (wallets?.has(playerId))
           wallets.set(playerId, (BigInt(wallets.get(playerId)) - BigInt(quote.amount)).toString());
@@ -571,8 +625,16 @@ export function createLoopbackTableService({ now = Date.now, asset: assetOverrid
     reconnect(playerId) {
       const seat = seats().find((candidate) => candidate.playerId === playerId);
       if (!seat) throw fail('No seat for that player.', 404);
+      const nextConnectedUntil = Math.min(
+        Math.max(seat.connectedUntil ?? 0, timestamp() + TABLE_POLICY.leaseMs),
+        state.maxEndsAt,
+      );
+      const changed = seat.connectedUntil !== nextConnectedUntil || seat.disconnectDeadline !== null;
       seat.disconnectDeadline = null;
-      seat.connectedUntil = timestamp() + TABLE_POLICY.leaseMs;
+      if (changed) {
+        seat.connectedUntil = nextConnectedUntil;
+        state.revision += 1;
+      }
       totals();
       return clone(seat);
     },

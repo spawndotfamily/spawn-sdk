@@ -14,6 +14,7 @@ and get a pass/fail answer before publishing.
 | --- | --- |
 | `loopback-table-service.mjs` | A test double that speaks the platform's table contract on loopback, so the **real** SDK client and its validators drive it. |
 | `table-scenarios.mjs` | Eleven scripted scenarios — unequal all-ins/side pots, cash-outs, disconnect grace, reconnect, lost-response retry, abandoned-hand refund, six seats across twenty hands, mid-session seat churn, a stubbed client method, an injected clock, and a small fleet guard — each asserting the money invariant. Shipped as the `spawn-test` command. |
+| `local-host.mjs` | Actual Spawn approval UI and ledger/API bundle on loopback; synthetic player capabilities, signed multiplayer admission and durable test state. See the local approval guide. |
 | `table-fleet.mjs` | A fleet driver: N simulated players across M tables (one service per table, up to six seats each), every phase run headlessly, conservation asserted per table and in aggregate, refused approvals counted. Library `runFleet()` plus a CLI. |
 
 Run it (from your own project — the paths below are consumer paths):
@@ -28,12 +29,11 @@ Working inside the SDK repo itself, run `node testing/table-scenarios.mjs` inste
 
 ## Why a test double instead of the real platform
 
-The platform's table routes require signed-in member accounts and the Spawn
-approval overlay, neither of which can be scripted. The client already allows an
-exact loopback origin for local testing (the chain-31337 seam documented in
-`docs/table-bankroll.md`), so this service speaks the same request/response
-contract on `http://127.0.0.1`. Your production code path is unchanged — the same
-`createSpawnTableClient`, the same validators, the same retry semantics.
+Use the fast double for focused game-rule scenarios without a browser. For the actual
+approval UI and production ledger routes, use [spawn-test-host](../docs/local-approval-testing.md):
+its synthetic players can be driven by browser automation. Both layers connect the
+public SDK clients to an exact loopback origin; neither uses real accounts or tokens.
+The double implements the protocol independently, while the host bundles platform source.
 
 It is a **rules-free** double: it enforces accounting, not poker. Your scenario
 decides who wins; the service decides whether the books balance.
@@ -132,11 +132,13 @@ for (const { playerId, amount } of [
 A full worked version (unequal stacks, a side pot, a cash-out) is in
 `examples/table-multiplayer-sim.mjs`, and the shipped six-seat scenario uses the same loop.
 
-**What this still cannot simulate**, and why one real check remains: the overlay itself is Spawn's
-UI, and a *real* approval is authorized server-side against a real signed-in member account. So the
-simulated approvals prove your game's logic and the money accounting against the platform's real
-contract; they cannot prove the platform's own overlay. That is why one two-account preview match
-stays a human step before publishing a table game.
+**Test the actual approval UI too.** The fast doubles below model decisions and money.
+Use [the local approval host](../docs/local-approval-testing.md) to run Spawn's actual
+approval components, production ledger and API handlers with synthetic accounts,
+including browser automation and your real multiplayer bridge. No hosted login or
+second person is required. Hosted account/credential setup, the uploaded build and
+network behavior still need a private-preview check; local success is not a guarantee
+of production success.
 
 ### Testing at scale (fleet driver)
 
@@ -214,17 +216,15 @@ const client = service.stubClient({
 The harness is importable by package path (no relative-path or `require.resolve`
 tricks): `@spawndotfamily/sdk/testing/loopback-table-service.mjs`.
 
-### What this does NOT cover (yet)
+### Boundaries of the fast double
 
-- **The real approval overlay and a real account's authorization.** `confirmBuyIn(playerId)`
-  simulates the Approve click for any number of players, which covers your game's logic and the
-  money accounting; the platform's own overlay UI and a *real* member account's server-side
-  authorization are what it cannot stand in for, so one real two-account preview match remains a
-  human step.
-- **True concurrency.** The fleet driver and the N-player scenarios run their players sequentially
-  in one process against the loopback double. A driver running N virtual players *concurrently*
-  over the real browser bridge and multiplayer transport is not shipped — it only matters if you
-  run your own game server.
+- **The real approval overlay.** The fast double's `confirmBuyIn` simulates a decision.
+  Use [spawn-test-host](../docs/local-approval-testing.md) and browser automation for the
+  actual Spawn screen, production ledger and isolated SDK bridge. Real hosted accounts
+  and deployment configuration still need a private-preview acceptance check.
+- **Concurrent browser sessions.** The fast fleet runs sequentially in one process.
+  The local approval host supports independent player URLs and concurrent browser
+  sessions; connect your actual game server to test its transport and concurrency.
 - **`spawn-dev` table state.** The single-player dev state hook does not yet
   expose tables; today `service.state()` is the agent-readable surface.
 - **A rake or fee out of the pot.** The contract conserves every committed base unit to the
@@ -240,5 +240,6 @@ tricks): `@spawndotfamily/sdk/testing/loopback-table-service.mjs`.
    here (who wins, when the hand voids, what a tie does).
 3. Every player who can be disconnected, idle or crash-recovered still gets their
    stack back exactly once.
-4. You have run one real two-account preview match — the automated layer proves
-   accounting, not gameplay.
+4. Your game passes local browser approval and multiplayer checks using `spawn-test-host`.
+5. You have checked the deployed build and account/server configuration in a private
+   preview, and reported those results separately from local tests.

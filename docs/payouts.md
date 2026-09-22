@@ -143,3 +143,7 @@ What it cannot stand in for: the platform's real custody and Listing token, real
 - Not a browser API. The client refuses to construct in a browser and the route refuses browser origins; there is no browser payout method in this SDK.
 - Not a way to pay a browser-reported score or win, and not an approval for a player. Your server decides the payout; the member's identity comes from verified admission.
 - Not a generic transfer API. Direct player-to-player transfers are [trades](trades.md); player-funded matches are [match payments](match-payments.md).
+
+## Local approval testing
+
+Use [spawn-test-host](local-approval-testing.md) to exercise the actual Spawn approval components and ledger routes with synthetic players on your own computer. The public server clients connect using the exported local configuration. Browser automation can approve or cancel; no hosted account or real funds are needed. Verify authoritative receipts and balances after interrupted responses, then test the exact uploaded build and hosted setup in a private preview.

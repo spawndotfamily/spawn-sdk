@@ -1,13 +1,14 @@
 {
   "name": "@spawndotfamily/sdk",
-  "version": "0.10.0",
+  "version": "0.11.0",
   "type": "module",
   "description": "Browser game SDK, isolated local testing, and private-preview publishing tools for Spawn.",
   "license": "MIT",
   "bin": {
     "spawn-publish": "dist/cli/run.js",
     "spawn-dev": "dist/dev/run.js",
-    "spawn-test": "testing/table-scenarios.mjs"
+    "spawn-test": "testing/table-scenarios.mjs",
+    "spawn-test-host": "testing/local-host-cli.mjs"
   },
   "exports": {
     ".": {
@@ -56,7 +57,8 @@
     "docs/match-recovery.md",
     "docs/token-balances.md",
     "docs/table-bankroll.md",
-    "docs/payouts.md"
+    "docs/payouts.md",
+    "docs/local-approval-testing.md"
   ],
   "scripts": {
     "build": "tsc",
@@ -64,9 +66,12 @@
     "test:tables": "node testing/table-scenarios.mjs",
     "check": "tsc --noEmit && tsc -p tsconfig.harness-types.json",
     "postbuild": "node -e \"for(const p of ['dist/cli/run.js','dist/dev/run.js']) require('node:fs').chmodSync(p, 0o755)\"",
-    "spawn-publish": "node --experimental-strip-types src/cli/run.ts"
+    "spawn-publish": "node --experimental-strip-types src/cli/run.ts",
+    "pretest": "npm run build",
+    "test:browser": "node examples/local-approval-playwright.mjs && node --test tests/local-*.integration.mjs"
   },
   "devDependencies": {
+    "@playwright/test": "1.62.1",
     "typescript": "5.9.3"
   },
   "repository": {

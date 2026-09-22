@@ -95,3 +95,10 @@ void payoutConservation.balanced;
 void payoutTransport;
 void payoutWrites;
 void payoutStubbed;
+
+import { startSpawnTestHost } from '@spawndotfamily/sdk/testing/local-host.mjs';
+const localHost = await startSpawnTestHost({ players: 100, balance: '100' });
+const localPlayerId: string = localHost.players[0]!.playerId;
+const fakeOnly: true = localHost.simulated;
+void localPlayerId; void fakeOnly;
+await localHost.close();

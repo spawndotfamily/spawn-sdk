@@ -117,3 +117,7 @@ Match recovery: server SDK 0.7.2 adds `closeCreation(matchId)` for uncertain att
 Standalone Listing-token balances are available through `client.tokens.balance()`. Creator servers can read their verified game roster and decide who sees balances. See the [balance guide](docs/token-balances.md).
 
 Persistent table operations and recovery are documented in the [table bankroll guide](docs/table-bankroll.md), including seat generations, side pots, reconnects and offline cash-out recovery.
+
+### Local approval testing
+
+Use `npx --no-install spawn-test-host --players 6 --game-url http://127.0.0.1:3000 --config .spawn-local.json` to open your local multiplayer game as independent synthetic players and test Spawn’s real approval UI and ledger. No hosted account is needed. See [the local approval guide](docs/local-approval-testing.md) for automation, large player groups and restart recovery.

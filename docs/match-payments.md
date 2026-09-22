@@ -124,3 +124,7 @@ Spawn displays the exact amount, token identity, network, contract, available ba
 Only one request can be pending. Repeating the same match ID shares that request; a different ID is rejected. The browser request times out after 120 seconds. A timeout or disposed channel does not prove cancellation or refund. Read server status instead of automatically asking the player to pay again.
 
 The existing first-party Rob the Rich integration retains its separate duel/raid protocol. Do not copy its private endpoints, roles or integer amount conversions into another game; use the generic server client above.
+
+## Local approval testing
+
+Use [spawn-test-host](local-approval-testing.md) to exercise the actual Spawn approval components and ledger routes with synthetic players on your own computer. The public server clients connect using the exported local configuration. Browser automation can approve or cancel; no hosted account or real funds are needed. Verify authoritative receipts and balances after interrupted responses, then test the exact uploaded build and hosted setup in a private preview.

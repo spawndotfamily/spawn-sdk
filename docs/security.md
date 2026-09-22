@@ -96,3 +96,7 @@ Direct trades require two authenticated Spawn members and active same-game launc
 ## Creator server registration
 
 SDK 0.7.0 includes [self-service server setup](server-setup.md). Fresh `server:configure` credentials authorize settings for the creator's own game; the SDK generates separate private match credentials locally and registers only hashes. No Spawn VPS access is needed. Configure through the CLI, deploy the creator's own server, then verify two-member settlement before claiming completion. Setup does not authorize spending for players or grant platform administration.
+
+## Isolated local approval host
+
+SDK 0.11.0 includes [spawn-test-host](local-approval-testing.md) for approval testing. It binds only to loopback, rejects foreign Host/Origin values, and uses per-player local capabilities with a dedicated synthetic game credential. It never loads production environment files, wallet keys or RPC configuration. Its database must be new or an initialized local test database; SQLite URI filenames and foreign databases are rejected. Keep exported local configuration private and out of game bundles. Synthetic approvals cannot spend hosted tokens; they exercise the shared UI/API/ledger, while hosted configuration and real account integration still require a private-preview check.

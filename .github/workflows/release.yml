@@ -41,6 +41,8 @@ jobs:
             status=$?
             test "$status" -eq 2 || exit "$status"
           fi
+      - name: Require committed platform sources for the local test artifact
+        run: node --input-type=module -e "import fs from 'node:fs'; import assert from 'node:assert/strict'; assert.equal(JSON.parse(fs.readFileSync('testing/platform/manifest.json')).sourceTreeDirty, false)"
       - run: npm ci --ignore-scripts
       - run: npm test
       - run: npm run build
@@ -48,6 +50,8 @@ jobs:
       # server types — so it must run after the build.
       - run: npm run check
       - run: node --test tests/dev-launcher.integration.mjs
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:browser
       - name: Publish using npm trusted publishing
         run: npm publish --access public --ignore-scripts
   release-notes:

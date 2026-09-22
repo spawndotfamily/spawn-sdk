@@ -175,6 +175,49 @@ test('match entry request expires after its bounded two-minute presentation wind
  }finally{client.dispose();f.restore();}
 });
 
+test('generic token payment keeps exact decimal/item/request identity on the confirmed port',async()=>{
+ const f=fixture(),p=port(),client=createSpawnMultiplayerClient({platformOrigin,serverOrigin});
+ const requestId='323e4567-e89b-42d3-a456-426614174000';
+ const receipt={id:'523e4567-e89b-42d3-a456-426614174000',assetId:'erc20:46630:0x'+'a'.repeat(40),amount:'250000000000000000',projectId:'623e4567-e89b-42d3-a456-426614174000',status:'paid' as const};
+ try{
+  const nonce=connect(f,p);p.emit({type:'spawn:multiplayer-confirm',version:1,nonce});await client.ready();
+  const payment=client.requestTokenPayment({amount:'0.2500',item:'Entry',requestId});await Promise.resolve();
+  const request=p.sent.find(message=>message.type==='spawn:multiplayer-token-payment-request');
+  assert.deepEqual(request,{type:'spawn:multiplayer-token-payment-request',version:1,nonce,requestId,amount:'0.2500',item:'Entry'});
+  p.emit({type:'spawn:multiplayer-token-payment-result',version:1,nonce,requestId,receipt});
+  assert.deepEqual(await payment,receipt);
+ }finally{client.dispose();f.restore();}
+});
+
+test('generic token payment rejects malformed amount/item/request identity before bridge dispatch',async()=>{
+ const f=fixture(),p=port(),client=createSpawnMultiplayerClient({platformOrigin,serverOrigin});
+ try{
+  const nonce=connect(f,p);p.emit({type:'spawn:multiplayer-confirm',version:1,nonce});await client.ready();
+  for(const input of [
+   {amount:0.25},
+   {amount:'0'},
+   {amount:'1e-3'},
+   {amount:'1',item:'x'.repeat(81)},
+   {amount:'1',item:'line\nitem'},
+   {amount:'1',requestId:'not-a-uuid'},
+   {amount:'1',assetId:'erc20:46630:0x'+'a'.repeat(40)},
+  ]) await assert.rejects(client.requestTokenPayment(input as any),/token payment|decimal|string|item|UUID|amount/i);
+  assert.equal(p.sent.filter(message=>message.type==='spawn:multiplayer-token-payment-request').length,0);
+ }finally{client.dispose();f.restore();}
+});
+
+test('generic token payment coalesces the same pending request and leaves uncertain outcomes to the caller',async()=>{
+ const f=fixture(),p=port(),client=createSpawnMultiplayerClient({platformOrigin,serverOrigin});
+ const requestId='723e4567-e89b-42d3-a456-426614174000';
+ try{
+  const nonce=connect(f,p);p.emit({type:'spawn:multiplayer-confirm',version:1,nonce});await client.ready();
+  const first=client.requestTokenPayment({amount:'1',requestId}),same=client.requestTokenPayment({amount:'1',requestId});
+  await assert.rejects(client.requestTokenPayment({amount:'2',requestId:'823e4567-e89b-42d3-a456-426614174000'}),/pending/i);
+  await Promise.resolve();assert.equal(p.sent.filter(message=>message.type==='spawn:multiplayer-token-payment-request').length,1);
+  client.dispose();await assert.rejects(first,/unknown/i);await assert.rejects(same,/unknown/i);
+ }finally{client.dispose();f.restore();}
+});
+
 test('standalone balance read uses the confirmed multiplayer port without trade creation',async()=>{
  const f=fixture(),p=port(),client=createSpawnMultiplayerClient({platformOrigin,serverOrigin});
  try {
