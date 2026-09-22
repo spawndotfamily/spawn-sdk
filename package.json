@@ -1,6 +1,6 @@
 {
   "name": "@spawndotfamily/sdk",
-  "version": "0.11.0",
+  "version": "0.12.0",
   "type": "module",
   "description": "Browser game SDK, isolated local testing, and private-preview publishing tools for Spawn.",
   "license": "MIT",
@@ -58,7 +58,8 @@
     "docs/token-balances.md",
     "docs/table-bankroll.md",
     "docs/payouts.md",
-    "docs/local-approval-testing.md"
+    "docs/local-approval-testing.md",
+    "docs/token-payments.md"
   ],
   "scripts": {
     "build": "tsc",

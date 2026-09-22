@@ -2,7 +2,7 @@
 import { createServer } from 'node:http';
 import { randomBytes, randomUUID, generateKeyPairSync, sign } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
-import { createSpawnTableClient, createSpawnMatchClient, createSpawnPayoutClient, createSpawnTokenClient } from '@spawndotfamily/sdk/server';
+import { createSpawnTableClient, createSpawnMatchClient, createSpawnPayoutClient, createSpawnTokenClient, createSpawnPaymentClient } from '@spawndotfamily/sdk/server';
 import { createLocalTestEngine } from './platform/engine.mjs';
 import { prepareLocalGame } from './local-build.mjs';
 
@@ -154,7 +154,7 @@ export async function startSpawnTestHost(options = {}) {
     simulated: true, origin, projectId: engine.projectId, asset: engine.asset,
     credential: engine.credential, players: engine.players.map((p) => player(p.playerId)), player,
     verification: verification(), clientOptions,
-    tables: createSpawnTableClient(clientOptions), matches: createSpawnMatchClient(clientOptions), payouts: createSpawnPayoutClient(clientOptions), tokens: createSpawnTokenClient(clientOptions),
+    tables: createSpawnTableClient(clientOptions), matches: createSpawnMatchClient(clientOptions), payouts: createSpawnPayoutClient(clientOptions), tokens: createSpawnTokenClient(clientOptions), payments: createSpawnPaymentClient(clientOptions),
     loseNextResponse(path) {
       if (typeof path !== 'string' || !path.startsWith('/api/v1/') || path.includes('?') || path.includes('#')) throw new Error('Use an exact local API path.');
       lostResponsePath = path;

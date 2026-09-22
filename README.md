@@ -16,10 +16,12 @@ Keep your game, engine, and build tools. Use the features you need.
 | Scores and leaderboards | Submit scores and show best scores, latest scores, or every run. You choose what players can see. |
 | Creator database | Read and manage your game's player data from your computer, even before the first upload. |
 | Listing access and optional payments | Let players use a free Listing or confirm its one-time listing-selected testnet access purchase; separate optional payments use explicit amounts through Spawn's shared overlay. |
-| Local testing | Try fake accounts, saves, scores, fixed TEST payments, and creator-pool controls before uploading. |
+| Verified multiplayer purchases | Open Spawn’s exact Listing-token approval, recover paid receipts on your server, and deliver each item once. |
+| Creator payouts | Send tokens from your own game pool to verified members through the server-only payout API. |
+| Local testing | Test the actual approval UI and ledger with 1–1,000 synthetic players using `spawn-test-host`; use `spawn-dev` separately for saves and scores. |
 | Publishing | Upload a private preview, inspect its automated checks, and explicitly publish a tested release. |
 
-Only the isolated local simulator uses fixed TEST credits with no cash value; hosted payments without a Listing token reject; the local simulator does not emulate Listing-configured token purchases. A hosted configured game entry can use one Spawn-admitted asset on chain ID 46630 testnet; Spawn selects the asset from the game's listing settings and owns confirmation. Real-money deposits and redeemable payouts are not enabled.
+Spawn selects the token from the game’s Listing and owns the confirmation screen. Hosted payments require an admitted Robinhood Chain Testnet asset (chain 46630). The [local approval host](docs/local-approval-testing.md) runs the same approval components and ledger with isolated synthetic balances; it cannot spend hosted tokens. The older `spawn-dev` fixed TEST dialog is a separate save/score simulator. See [verified purchases](docs/token-payments.md) for server receipt recovery and [payouts](docs/payouts.md) for creator-pool transfers. Mainnet settlement is not enabled.
 
 ## Publish with your AI agent
 
@@ -41,14 +43,14 @@ npm install --save-exact --ignore-scripts @spawndotfamily/sdk
 
 Follow the [browser integration guide](docs/integration.md) and [startup example](docs/startup.md) to connect your game. Bundle the SDK with your browser assets so all its dependencies are included. No particular UI framework is required.
 
-Once you have a browser build, check it and open the local test launcher:
+Once you have a browser build, check it. For Listing-token flows in an ordinary isolated browser game, open the local approval host:
 
 ```sh
 npx --no-install spawn-publish check ./dist
-npx --no-install spawn-dev ./dist
+npx --no-install spawn-test-host --players 6 --game-dir ./dist --config .spawn-local.json
 ```
 
-The launcher supplies fake players, a Guest option, and balances. It does not use your real Spawn account or hosted player data. A build check catches packaging problems; you still need to play the game.
+For a multiplayer game with its own server, use `--game-url` and the configuration steps in [local approval testing](docs/local-approval-testing.md). The host supports browser automation of approval, cancellation and recovery without real accounts or tokens. Use `npx --no-install spawn-dev ./dist` separately for saves, scores and Guest integration. A build check catches packaging problems; play the game and verify the exact hosted build before publication.
 
 When you're ready, upload the same folder using the credentials you downloaded from Spawn:
 

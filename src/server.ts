@@ -184,4 +184,19 @@ export type {
     SpawnPayoutReceipt,
 } from './payout-server.ts';
 
+export { createSpawnPaymentClient, SpawnTokenPaymentError, SpawnPaymentLookupError } from './payment-server.ts';
+export type {
+    SpawnPaymentClient,
+    SpawnPaymentClientOptions,
+    SpawnPaymentLookup,
+    SpawnPaymentLookupInput,
+    SpawnTokenPaymentClient,
+    SpawnTokenPaymentClientOptions,
+    SpawnTokenPaymentErrorDetails,
+    SpawnTokenPaymentLookup,
+    SpawnTokenPaymentLookupInput,
+    SpawnTokenPaymentReceipt,
+    SpawnTokenPaymentStatus,
+} from './payment-server.ts';
+
 export type { SpawnBalancePlayer, SpawnTokenBalance, SpawnTokenBalances } from './token-balances.ts';

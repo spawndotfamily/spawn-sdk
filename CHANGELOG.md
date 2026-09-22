@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.12.0
+
+### Added
+
+- Public server-side Listing-token payment verification and recovery through `createSpawnPaymentClient().lookup()`, with a durable once-only item issuance example. Browser receipts alone never authorize server inventory.
+- Regression coverage for fast local iframe startup and overlapping, cancelled or timed-out approval requests.
+
+### Changed
+
+- Local game bridges install before the iframe can announce readiness. Queued test-driver approvals resume when an existing approval closes, and cancelled token approvals release their dialog and shared approval lock.
+- Delayed match completions keep their approval lock until recorded. Interrupted local game asset requests close their file handles when a page reloads or disconnects.
+- README and creator instructions distinguish the real local approval host from the legacy fixed-TEST simulator, and document authoritative purchase verification, cancellation and unknown-outcome recovery.
+
+### Upgrade notes
+
+- Use 0.12.0 or newer for local approval testing and multiplayer purchases. Update and rebuild the game SDK, then restart the local test host. Server payment verification requires the matching hosted platform endpoint; keep item issuance blocked if verification is unavailable. See `docs/token-payments.md`.
+
 ## 0.11.0
 
 ### Added

@@ -68,6 +68,10 @@ npm trusts only spawndotfamily/spawn-sdk, release.yml, environment npm. Configur
 
 To release: `gh workflow run release.yml --ref main -f version=0.2.9` (replace with the committed version). If npm succeeds but GitHub release-note creation fails, create the missing release at the successful run's exact commit using the same changelog section; do not attempt to republish an existing npm version. If a version already exists, stop and investigate its source/provenance rather than overwriting or silently skipping it.
 
+## Server-verified optional purchases (0.12.0)
+
+Both browser clients expose `requestTokenPayment({ amount, item, requestId? })` through Spawn's shared confirmation UI. The public server-only `createSpawnPaymentClient().lookup()` reads canonical, same-game/same-player payment status using the dedicated game credential. Preserve cookie/origin rejection, bounded responses, exact receipt validation and historical lookup after launch expiry. It never confirms, cancels or debits a payment. See [token purchases](token-payments.md) for recovery by the original launch/request IDs and atomic creator-side item issuance. A receipt lookup establishes payment only; game outcomes remain the creator server's responsibility.
+
 ## Direct trades
 
 Player trades use authenticated launch routes, never match or publishing credentials. Preserve same-account/session/game checks, member-only recipients, immutable quote versions, exact amounts, atomic two-leg settlement and explicit sender approval. Every offer update clears both approvals. No automatic mutation retries. Preserve the distinction between token settlement and independent game item ownership; see [trades](trades.md).

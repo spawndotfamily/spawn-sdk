@@ -59,3 +59,7 @@ A 401/403 means missing/expired/revoked credentials, missing setup scope or wron
 ## Roster balances
 
 SDK 0.8.0 and later’s server-only `createSpawnTokenClient` reuses this game’s dedicated `match.key` for read-only Listing-token roster snapshots. Existing games need no key rotation. This credential can read active same-game balances as well as its documented match and table authority; protect it accordingly. Publishing/storage keys cannot read the roster. Read [token balances](token-balances.md) for visibility and verified admission.
+
+## Verify optional purchase receipts (0.12.0)
+
+`createSpawnPaymentClient` from `@spawndotfamily/sdk/server` reuses the existing dedicated game `match.key` for read-only payment status. No extra credential, privileged Spawn access or manual operator activation is needed. Publishing and player-storage keys cannot use this API. Keep the credential server-side and follow [token purchases](token-payments.md) for saved orders, exact receipt checks, recovery and once-only item delivery. The matching platform endpoint must be deployed; an unavailable endpoint must leave item issuance blocked.

@@ -1,6 +1,6 @@
 # Test token approvals on your computer
 
-SDK 0.11.0 includes `spawn-test-host`: Spawn's actual approval components, token ledger and API handlers in an isolated local process. You do not need a Spawn account, hosted preview, downloaded creator credential or second person to test these stages. Synthetic balances never reach the chain or your hosted wallet.
+SDK 0.12.0 includes `spawn-test-host`: Spawn's actual approval components, token ledger and API handlers in an isolated local process. You do not need a Spawn account, hosted preview, downloaded creator credential or second person to test these stages. Synthetic balances never reach the chain or your hosted wallet.
 
 Use Node 22.13 or newer (Node 24 recommended). Install the SDK in your game project. The host is included in the npm package; no Spawn source checkout or infrastructure access is needed.
 
@@ -32,7 +32,7 @@ npx --no-install spawn-test-host --players 6 --port 4175 --game-url http://127.0
 
 Add `.spawn-local.json` and any local test database to `.gitignore`. The config file is created privately and will not overwrite an existing file. Remove an old **local test config** deliberately before exporting a new one. It contains only this test run's synthetic player sessions and fake server credential; do not put it in a browser bundle.
 
-Configure your authoritative game server explicitly with that file's `platformOrigin`, `projectId`, `credential` and `verification` settings. Pass `verification` to `createSpawnLaunchVerifier` and the other three fields to the standard table/match/payout/token server clients. These are the same public clients you use when hosted. Supply the loopback platform origin and your loopback game server origin to the multiplayer browser client through your server's normal public configuration. Keep local and hosted configuration separate; never add a fallback identity, skip verifier checks, or decide trust from `environment: 'sandbox'`.
+Configure your authoritative game server explicitly with that file's `platformOrigin`, `projectId`, `credential` and `verification` settings. Pass `verification` to `createSpawnLaunchVerifier` and the other three fields to the standard table/match/payout/token/payment server clients. Use `createSpawnPaymentClient(...).lookup()` for server receipt verification; the programmatic host also exposes `host.payments`. These are the same public clients you use when hosted. Supply the loopback platform origin and your loopback game server origin to the multiplayer browser client through your server's normal public configuration. Keep local and hosted configuration separate; never add a fallback identity, skip verifier checks, or decide trust from `environment: 'sandbox'`.
 
 Open a player's `url` from the exported file. The local host embeds your game and supplies a signed synthetic launch grant using the normal multiplayer bridge. Each URL is a different fake player. Open multiple windows or let browser automation open them. A buy-in requested by your game server appears in that player's Spawn approval screen; clicking Approve debits only the exact quoted amount. Cancel does not debit. Multiplayer optional payments use `requestTokenPayment({ amount, item })`, with the token chosen by the host's simulated Listing.
 

@@ -1,4 +1,4 @@
-import type { SpawnTableClient, SpawnMatchClient, SpawnPayoutClient, SpawnTokenClient, SpawnLaunchVerificationOptions, SpawnTableAsset } from '@spawndotfamily/sdk/server';
+import type { SpawnTableClient, SpawnMatchClient, SpawnPayoutClient, SpawnTokenClient, SpawnPaymentClient, SpawnLaunchVerificationOptions, SpawnTableAsset } from '@spawndotfamily/sdk/server';
 export type LocalApproval =
   | { kind: 'table'; tableId: string; buyInId: string }
   | { kind: 'match'; matchId: string }
@@ -27,6 +27,7 @@ export interface SpawnTestHost {
   readonly matches: SpawnMatchClient;
   readonly payouts: SpawnPayoutClient;
   readonly tokens: SpawnTokenClient;
+  readonly payments: SpawnPaymentClient;
   player(playerId: string): LocalTestPlayer;
   /** Applies one request, then drops its response to test uncertain-outcome recovery. */
   loseNextResponse(path: string): void;

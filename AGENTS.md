@@ -8,7 +8,7 @@ Before each editing session, compare the installed version with `npm view @spawn
 2. Follow [the creator checklist](docs/creator-checklist.md). Read integration, testing and security sections needed for the chosen features.
 3. Build, run the local launcher, play-test and upload directly from the game folder. GitHub is optional. Return the actual preview URL, tests and limitations. After the automated malware check passes, the creator may explicitly request publication by the creator or an authorized agent; no first-listing staff review is required.
 
-Before uploading, bundle the browser SDK with the game. Copying only its index.js omits transitive modules such as game-data.js and breaks startup. Run spawn-publish check, then spawn-dev and the actual private preview; read [diagnostics](docs/troubleshooting.md) if any step fails.
+Before uploading, bundle the browser SDK with the game. Copying only its index.js omits transitive modules such as game-data.js and breaks startup. Run spawn-publish check, use spawn-test-host for token approvals and spawn-dev for saves/scores, then verify the actual private preview; read [diagnostics](docs/troubleshooting.md) if any step fails.
 
 ## Find the instructions for your task
 
@@ -21,6 +21,7 @@ The README is the human-facing introduction. Keep operational instructions here 
 | Store progress or display scores | [Game data](docs/game-data.md) and [creator database](docs/creator-database.md) |
 | Automate token approvals on your own computer | [Local approval testing](docs/local-approval-testing.md): same Spawn approval components and ledger, synthetic multiplayer identities, no hosted account needed |
 | Build, test, and upload | [Testing](docs/testing.md), [publishing](docs/publishing.md), and [troubleshooting](docs/troubleshooting.md) |
+| Add a multiplayer shop or verify an optional purchase | [Token purchases](docs/token-payments.md): shared player approval, server receipt lookup, original-request recovery and durable once-only item delivery |
 | Add direct player trades | [Player token trades](docs/trades.md): player-authorized, Listing token, atomic transfers, no guests; independent game items are outside token settlement |
 | Configure the creator's server and match key | [Creator server setup](docs/server-setup.md): status, enable, retry, rotate and revoke through ordinary creator credentials |
 | Add payments, multiplayer or tables | [Entry payment flow](docs/integration.md#spawn-owned-entry-payment-flow), [token entry](docs/integration.md#configured-token-entry), [multiplayer](docs/multiplayer.md), [match entry](docs/match-payments.md), and [persistent tables](docs/table-bankroll.md) |
@@ -76,3 +77,7 @@ Read [table bankroll](docs/table-bankroll.md). Server table APIs use canonical u
 ## Local Listing-token approvals (0.11.0)
 
 Read [local approval testing](docs/local-approval-testing.md) before requiring a creator to manually approve every local test. Use `spawn-test-host` or `startSpawnTestHost` with separate synthetic player URLs, real public server clients and the packaged production approval components. Automate Confirm/Cancel through browser tools; verify status/balances through the service. Keep the test host, local keys and synthetic identities out of the shipped game. The host does not certify deployed identity, custody or server configuration, so retain one targeted private-preview acceptance pass. Legacy `spawn-dev` fixed TEST receipts and the fast loopback doubles are different test layers.
+
+## Server-verified optional purchases (0.12.0)
+
+Both `createSpawnGameClient` and `createSpawnMultiplayerClient` support `requestTokenPayment({ amount, item, requestId? })`. For a multiplayer shop, read [token purchases](docs/token-payments.md). Save a server-owned catalog order and original verified player/launch/request IDs before requesting approval. Use server-only `createSpawnPaymentClient().lookup()` with the dedicated game credential; browser receipt JSON is only a lookup hint. Require an authoritative paid receipt matching the saved game/player/asset/amount/item/order, then atomically claim that receipt once and grant inventory in the creator database. Recover unknown outcomes through the original tuple, including after reconnect; a new launch is not the same idempotency scope. Never recharge automatically after timeout or not_found. Keep table buy-ins separate from optional item purchases.
