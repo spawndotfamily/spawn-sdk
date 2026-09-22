@@ -258,6 +258,25 @@ test('a suspended game or custody outage fails payouts with 503 and recovers on 
   assert.equal(service.balance(member), '1');
 });
 
+test('suspension leaves operation reads available for recovering an unknown payout outcome', async () => {
+  const member = randomUUID();
+  const service = createLoopbackPayoutService({ members: { [member]: '0' }, pool: '10' });
+  const operationId = randomUUID();
+  service.loseNextResponse('create');
+  await assert.rejects(
+    service.client.create({ operationId, playerId: member, amount: '1' }),
+    (error: unknown) => {
+      const candidate = error as { outcomeUnknown?: boolean; operationId?: string };
+      return candidate?.outcomeUnknown === true && candidate.operationId === operationId;
+    },
+  );
+  service.suspend('Custody is unavailable.');
+  const recorded = await service.client.operation(operationId);
+  assert.equal(recorded?.amount, '1');
+  assert.equal(service.balance(member), '1');
+  assert.throws(() => service.loseNextResponse('operation'), /only supports.*create/i);
+});
+
 test('a game with no Listing token refuses payouts and cannot be forced to pay', async () => {
   const member = randomUUID();
   const service = createLoopbackPayoutService({ assetId: null, members: { [member]: '0' }, pool: '10' });

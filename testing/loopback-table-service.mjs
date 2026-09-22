@@ -80,6 +80,18 @@ export function createLoopbackTableService({ now = Date.now, asset: assetOverrid
   const operations = new Map();
   const calls = [];
 
+  const copyQuotes = () => new Map([...quotes.entries()].map(([key, value]) => [key, clone(value)]));
+  const restoreQuotes = (saved) => {
+    quotes.clear();
+    for (const [key, value] of saved) quotes.set(key, value);
+  };
+  const copyWallets = () => (wallets === null ? null : new Map(wallets));
+  const restoreWallets = (saved) => {
+    if (wallets === null || saved === null) return;
+    wallets.clear();
+    for (const [key, value] of saved) wallets.set(key, value);
+  };
+
   const fail = (message, status = 409) => Object.assign(new Error(message), { status });
   const seats = () => state.seats;
   const handPlayers = () => state.hand?.players ?? [];
@@ -133,26 +145,40 @@ export function createLoopbackTableService({ now = Date.now, asset: assetOverrid
   /** Deadline/lease/disconnect sweep, mirroring the platform's recovery rules. */
   function sweep() {
     if (!state) return;
-    if (state.hand && timestamp() > state.hand.deadline) {
+    const now = timestamp();
+    for (const quote of quotes.values()) {
+      if (quote.status === 'pending' && quote.expiresAt <= now) quote.status = 'expired';
+    }
+    if (state.status === 'open' && state.hand && now >= state.hand.deadline) {
       for (const player of state.hand.players) {
         const seat = seats().find((candidate) => candidate.playerId === player.playerId);
         if (seat) seat.stack = (BigInt(seat.stack) + BigInt(player.contribution)).toString();
       }
       state.hand = null;
     }
-    if (timestamp() > state.leaseExpiresAt) {
+    if (state.status === 'open' &&
+      (now >= state.maxEndsAt || state.leaseExpiresAt !== null && now >= state.leaseExpiresAt)) {
       for (const player of handPlayers()) {
         const seat = seats().find((candidate) => candidate.playerId === player.playerId);
         if (seat) seat.stack = (BigInt(seat.stack) + BigInt(player.contribution)).toString();
       }
       state.hand = null;
+      for (const quote of quotes.values()) {
+        if (quote.status === 'pending') quote.status = 'cancelled';
+      }
       for (const seat of [...seats()]) cashOutSeat(seat);
       state.status = 'closed';
+      state.leaseExpiresAt = null;
     }
     for (const seat of [...seats()]) {
-      if (seat.disconnectDeadline !== null && timestamp() >= seat.disconnectDeadline) {
+      if (seat.disconnectDeadline !== null && now >= seat.disconnectDeadline) {
         seat.status = 'leaving';
         seat.disconnectDeadline = null;
+        seat.connectedUntil = null;
+      }
+      if (seat.status === 'active' && seat.connectedUntil !== null && now >= seat.connectedUntil) {
+        seat.status = 'leaving';
+        seat.connectedUntil = null;
       }
       const inHand = state.hand?.players.some((player) => player.seatId === seat.seatId);
       if (seat.status === 'leaving' && !inHand) cashOutSeat(seat);
@@ -160,9 +186,10 @@ export function createLoopbackTableService({ now = Date.now, asset: assetOverrid
     totals();
   }
 
-  function snapshot() {
+  function snapshot(tableId) {
     sweep();
     if (!state) throw fail('Not found', 404);
+    if (tableId !== undefined && state.tableId !== tableId) throw fail('Not found', 404);
     return clone(state);
   }
 
@@ -174,18 +201,29 @@ export function createLoopbackTableService({ now = Date.now, asset: assetOverrid
         throw fail('Conflicting operation body.');
       return clone(saved.result);
     }
-    sweep();
-    apply();
-    state.revision += 1;
-    totals();
-    const result = action === 'requestBuyIn' ? quotes.get(input.buyInId) : state;
-    operations.set(input.operationId, {
-      operationId: input.operationId,
-      action,
-      result: clone(result),
-      input: clone(input),
-    });
-    calls.push({ action, input: clone(input) });
+    const stateBefore = state === null ? null : clone(state);
+    const quotesBefore = copyQuotes();
+    const walletsBefore = copyWallets();
+    let result;
+    try {
+      sweep();
+      apply();
+      if (state !== null && action !== 'close') state.revision += 1;
+      totals();
+      result = action === 'requestBuyIn' ? quotes.get(input.buyInId) : state;
+      operations.set(input.operationId, {
+        operationId: input.operationId,
+        action,
+        result: clone(result),
+        input: clone(input),
+      });
+      calls.push({ action, input: clone(input) });
+    } catch (error) {
+      state = stateBefore;
+      restoreQuotes(quotesBefore);
+      restoreWallets(walletsBefore);
+      throw error;
+    }
     if (loseAction === action) {
       loseAction = null;
       throw new Error(`Simulated lost response for ${action}.`);
@@ -196,7 +234,8 @@ export function createLoopbackTableService({ now = Date.now, asset: assetOverrid
   const handlers = {
     async create(input) {
       return mutate('create', input, () => {
-        if (state) throw fail('Table already exists.');
+        if (state) throw fail('Table already exists or is permanently closed.');
+        const now = timestamp();
         state = {
           tableId: input.tableId,
           projectId,
@@ -205,30 +244,50 @@ export function createLoopbackTableService({ now = Date.now, asset: assetOverrid
           settingsVersion: 1,
           maxSeats: input.maxSeats,
           revision: 0,
-          leaseExpiresAt: timestamp() + TABLE_POLICY.leaseMs,
-          maxEndsAt: timestamp() + TABLE_POLICY.maxAgeMs,
+          leaseExpiresAt: Math.min(now + TABLE_POLICY.leaseMs, now + TABLE_POLICY.maxAgeMs),
+          maxEndsAt: now + TABLE_POLICY.maxAgeMs,
           seats: [],
           hand: null,
           totals: { buyIns: '0', cashOuts: '0', stacks: '0', committed: '0', pendingCashOuts: '0', backing: '0' },
         };
       });
     },
-    async status() {
-      return snapshot();
+    async status(tableId) {
+      return snapshot(tableId);
     },
-    async heartbeat() {
+    async heartbeat(tableId) {
       sweep();
-      if (state.status === 'open') state.leaseExpiresAt = timestamp() + TABLE_POLICY.leaseMs;
-      return snapshot();
+      if (!state || state.tableId !== tableId) throw fail('Not found', 404);
+      if (state.status === 'open')
+        state.leaseExpiresAt = Math.min(timestamp() + TABLE_POLICY.leaseMs, state.maxEndsAt);
+      return snapshot(tableId);
     },
-    async operation(_tableId, operationId) {
+    async operation(tableId, operationId) {
+      if (!state || state.tableId !== tableId) throw fail('Not found', 404);
       const saved = operations.get(operationId);
       if (!saved) throw fail('Not found', 404);
       return { operationId, action: saved.action, result: clone(saved.result) };
     },
     async requestBuyIn(tableId, input) {
       return mutate('requestBuyIn', input, () => {
+        if (!state || state.tableId !== tableId) throw fail('Not found', 404);
         if (state.status !== 'open') throw fail('Table is not open.');
+        const existing = seats().find((seat) => seat.playerId === input.player.playerId);
+        if ([...quotes.values()].some(
+          (quote) => quote.tableId === tableId && quote.playerId === input.player.playerId && quote.status === 'pending',
+        )) throw fail('This player already has a pending buy-in.');
+        const pendingSeatless = [...quotes.values()].filter(
+          (quote) => quote.tableId === tableId && quote.status === 'pending' &&
+            !seats().some((seat) => seat.playerId === quote.playerId),
+        ).length;
+        // The fleet/refusal harness intentionally asks an already full table for quotes for
+        // tracked wallets that cannot fund them, so the simulated approval can refuse at the
+        // same click as the real overlay. Fundable requests still reserve active + pending
+        // capacity exactly as the platform does.
+        const cannotFund = wallets?.has(input.player.playerId) &&
+          BigInt(wallets.get(input.player.playerId)) < BigInt(input.amount);
+        if (!existing && seats().length + pendingSeatless >= state.maxSeats && !cannotFund)
+          throw fail('The table has no available seat.');
         quotes.set(input.buyInId, {
           tableId,
           buyInId: input.buyInId,
@@ -238,12 +297,13 @@ export function createLoopbackTableService({ now = Date.now, asset: assetOverrid
           amount: input.amount,
           asset,
           settingsVersion: 1,
-          expiresAt: timestamp() + TABLE_POLICY.quoteMs,
+          expiresAt: Math.min(timestamp() + TABLE_POLICY.quoteMs, state.maxEndsAt),
         });
       });
     },
-    async buyIn(_tableId, buyInId) {
+    async buyIn(tableId, buyInId) {
       sweep();
+      if (!state || state.tableId !== tableId) throw fail('Not found', 404);
       const quote = quotes.get(buyInId);
       if (!quote) throw fail('Unknown buy-in quote.', 404);
       return clone(quote);
@@ -306,13 +366,18 @@ export function createLoopbackTableService({ now = Date.now, asset: assetOverrid
         );
         const contested = allTiers.filter((pot) => !refunds.includes(pot));
         if (input.pots.length !== contested.length) throw fail('Wrong number of pots.');
+        const seenCaps = new Set();
         for (const supplied of input.pots) {
+          if (seenCaps.has(supplied.cap)) throw fail('Settlement pot caps must be unique.');
+          seenCaps.add(supplied.cap);
           const pot = contested.find((candidate) => candidate.cap === supplied.cap);
           const paid = supplied.winners.reduce((total, winner) => total + BigInt(winner.amount), 0n);
-          if (!pot || paid !== BigInt(pot.amount))
-            throw fail('Pot amounts do not conserve.');
+          if (!pot || paid !== BigInt(pot.amount)) throw fail('Pot amounts do not conserve.');
           if (supplied.winners.some((winner) => !pot.eligible.includes(winner.playerId)))
             throw fail('Winner is not eligible for this pot.');
+        }
+        for (const supplied of input.pots) {
+          const pot = contested.find((candidate) => candidate.cap === supplied.cap);
           for (const winner of supplied.winners) {
             const seat = seats().find((candidate) => candidate.playerId === winner.playerId);
             if (seat) seat.stack = (BigInt(seat.stack) + BigInt(winner.amount)).toString();
@@ -347,6 +412,42 @@ export function createLoopbackTableService({ now = Date.now, asset: assetOverrid
         seat.disconnectDeadline = timestamp() + TABLE_POLICY.disconnectGraceMs;
       });
     },
+    async close(tableId, input) {
+      return mutate('close', input, () => {
+        if (state && state.tableId !== tableId) throw fail('Not found', 404);
+        if (!state) {
+          const now = timestamp();
+          state = {
+            tableId,
+            projectId,
+            status: 'closed',
+            asset: null,
+            settingsVersion: 0,
+            maxSeats: 0,
+            revision: 0,
+            leaseExpiresAt: null,
+            maxEndsAt: now,
+            seats: [],
+            hand: null,
+            totals: { buyIns: '0', cashOuts: '0', stacks: '0', committed: '0', pendingCashOuts: '0', backing: '0' },
+          };
+          return;
+        }
+        if (state.status === 'closed') return;
+        for (const player of handPlayers()) {
+          const seat = seats().find((candidate) => candidate.playerId === player.playerId);
+          if (seat) seat.stack = (BigInt(seat.stack) + BigInt(player.contribution)).toString();
+        }
+        state.hand = null;
+        for (const quote of quotes.values()) {
+          if (quote.status === 'pending') quote.status = 'cancelled';
+        }
+        for (const seat of [...seats()]) cashOutSeat(seat);
+        state.status = 'closed';
+        state.leaseExpiresAt = null;
+        state.revision += 1;
+      });
+    },
   };
 
   const ROUTES = {
@@ -357,6 +458,7 @@ export function createLoopbackTableService({ now = Date.now, asset: assetOverrid
     heartbeat: (tableId) => handlers.heartbeat(tableId),
     'cash-outs': (tableId, _path, input) => handlers.cashOut(tableId, input),
     disconnect: (tableId, _path, input) => handlers.disconnect(tableId, input),
+    close: (tableId, _path, input) => handlers.close(tableId, input),
   };
 
   const fetchImpl = async (url, options = {}) => {
@@ -366,7 +468,11 @@ export function createLoopbackTableService({ now = Date.now, asset: assetOverrid
       let result;
       if (path.length === 0) result = await handlers.create(input);
       else if (path.length === 1) result = await handlers.status(path[0]);
-      else result = await ROUTES[path[1]](path[0], path, input);
+      else {
+        const route = ROUTES[path[1]];
+        if (!route) throw fail('Unknown table route.', 404);
+        result = await route(path[0], path, input);
+      }
       return new Response(JSON.stringify(result), {
         status: 200,
         headers: { 'content-type': 'application/json' },
@@ -409,40 +515,57 @@ export function createLoopbackTableService({ now = Date.now, asset: assetOverrid
     balance: (playerId) => (wallets?.has(playerId) ? wallets.get(playerId) : null),
     /** Simulate the player approving their own buy-in in the Spawn overlay. */
     confirmBuyIn(playerId) {
-      const quote = [...quotes.values()].findLast(
-        (candidate) => candidate.playerId === playerId && candidate.status === 'pending',
-      );
-      if (!quote) throw fail('No pending quote for that player.', 404);
-      if (quote.expiresAt < timestamp()) throw fail('Quote has expired.');
-      if (state.status !== 'open') throw fail('Table is not open.');
-      // With opt-in test balances, an approval the player cannot fund is refused where the real
-      // overlay refuses it — at the click — and the quote stays pending. No debit happens.
-      if (wallets?.has(playerId) && BigInt(wallets.get(playerId)) < BigInt(quote.amount))
-        throw Object.assign(
-          fail(
-            `Insufficient balance for this buy-in: the player holds ${wallets.get(playerId)} base units, the quote needs ${quote.amount}.`,
-          ),
-          { code: 'INSUFFICIENT_BALANCE' },
-        );
-      if (wallets?.has(playerId))
-        wallets.set(playerId, (BigInt(wallets.get(playerId)) - BigInt(quote.amount)).toString());
-      quote.status = 'confirmed';
-      const existing = seats().find((seat) => seat.playerId === playerId);
-      if (existing) existing.stack = (BigInt(existing.stack) + BigInt(quote.amount)).toString();
-      else
-        seats().push({
-          playerId,
-          seatId: randomUUID(),
-          stack: quote.amount,
-          pendingCashOut: '0',
-          status: 'active',
-          connectedUntil: timestamp() + TABLE_POLICY.leaseMs,
-          disconnectDeadline: null,
-        });
-      state.totals.buyIns = (BigInt(state.totals.buyIns) + BigInt(quote.amount)).toString();
-      state.revision += 1;
-      totals();
-      return { tableId: state.tableId, buyInId: quote.buyInId, status: 'confirmed' };
+      const stateBefore = state === null ? null : clone(state);
+      const quotesBefore = copyQuotes();
+      const walletsBefore = copyWallets();
+      try {
+        sweep();
+        const quote = [...quotes.values()].findLast((candidate) => candidate.playerId === playerId);
+        if (!quote) throw fail('No pending quote for that player.', 404);
+        if (quote.status === 'expired' || quote.expiresAt <= timestamp()) {
+          quote.status = 'expired';
+          throw fail('Quote has expired.');
+        }
+        if (quote.status === 'cancelled') throw fail('Quote was cancelled.');
+        if (quote.status === 'confirmed')
+          return { tableId: state.tableId, buyInId: quote.buyInId, status: 'confirmed' };
+        if (!state || state.status !== 'open') throw fail('Table is not open.');
+        // With opt-in test balances, an approval the player cannot fund is refused where the real
+        // overlay refuses it — at the click — and the quote stays pending. No debit happens.
+        if (wallets?.has(playerId) && BigInt(wallets.get(playerId)) < BigInt(quote.amount))
+          throw Object.assign(
+            fail(
+              `Insufficient balance for this buy-in: the player holds ${wallets.get(playerId)} base units, the quote needs ${quote.amount}.`,
+            ),
+            { code: 'INSUFFICIENT_BALANCE' },
+          );
+        const existing = seats().find((seat) => seat.playerId === playerId);
+        if (existing && existing.status !== 'active') throw fail('A leaving seat cannot be re-bought.');
+        if (!existing && seats().length >= state.maxSeats) throw fail('The table has no available seat.');
+        if (wallets?.has(playerId))
+          wallets.set(playerId, (BigInt(wallets.get(playerId)) - BigInt(quote.amount)).toString());
+        quote.status = 'confirmed';
+        if (existing) existing.stack = (BigInt(existing.stack) + BigInt(quote.amount)).toString();
+        else
+          seats().push({
+            playerId,
+            seatId: randomUUID(),
+            stack: quote.amount,
+            pendingCashOut: '0',
+            status: 'active',
+            connectedUntil: Math.min(timestamp() + TABLE_POLICY.leaseMs, state.maxEndsAt),
+            disconnectDeadline: null,
+          });
+        state.totals.buyIns = (BigInt(state.totals.buyIns) + BigInt(quote.amount)).toString();
+        state.revision += 1;
+        totals();
+        return { tableId: state.tableId, buyInId: quote.buyInId, status: 'confirmed' };
+      } catch (error) {
+        state = stateBefore;
+        restoreQuotes(quotesBefore);
+        restoreWallets(walletsBefore);
+        throw error;
+      }
     },
     /** Mark a player connected again (reconnect), clearing the disconnect deadline. */
     reconnect(playerId) {

@@ -38,7 +38,7 @@ export interface TableSeat {
   stack: BaseUnits;
   pendingCashOut: BaseUnits;
   status: string;
-  connectedUntil: number;
+  connectedUntil: number | null;
   disconnectDeadline: number | null;
 }
 
@@ -55,11 +55,12 @@ export interface TableSnapshot {
   tableId: string;
   projectId: string;
   status: string;
-  asset: LoopbackAsset;
+  /** `null` for a closed absent-table tombstone. */
+  asset: LoopbackAsset | null;
   settingsVersion: number;
   maxSeats: number;
   revision: number;
-  leaseExpiresAt: number;
+  leaseExpiresAt: number | null;
   maxEndsAt: number;
   seats: TableSeat[];
   hand: unknown | null;

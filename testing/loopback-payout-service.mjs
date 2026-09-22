@@ -267,9 +267,11 @@ export function createLoopbackPayoutService({
         throw fail('A browser origin cannot call the payout route.', 403);
       if (headers.get('authorization') !== `Bearer ${credential}`)
         throw fail('Dedicated match server authorization is required.', 401);
-      if (suspension !== null) throw fail(suspension, 503);
       const method = (options.method ?? 'GET').toUpperCase();
       if (method === 'POST') {
+        // Platform reads remain available while writes are suspended so an unknown
+        // create response can still be reconciled by operation ID.
+        if (suspension !== null) throw fail(suspension, 503);
         if (rest.length !== 0) throw fail('Unknown payout route.', 404);
         rateLimit();
         let body;
@@ -365,6 +367,7 @@ export function createLoopbackPayoutService({
      * the recorded receipt instead of paying again — that is how you prove idempotency.
      */
     loseNextResponse(action) {
+      if (action !== 'create') throw new Error("loseNextResponse only supports the payout 'create' action.");
       loseAction = action;
     },
     /** Move the harness clock forward by `ms` (only the rate-bound window reads it). */
